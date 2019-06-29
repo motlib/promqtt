@@ -116,6 +116,8 @@ def main():
         datatype='gauge',
         helpstr='Relative wifi signal strength indicator')
     
+    pe.start_server_thread()
+
     mqttc = mqtt_setup(host='npi2', port=1883)
 
     # Start subscribe, with QoS level 0

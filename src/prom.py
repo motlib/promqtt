@@ -1,12 +1,14 @@
-from threading import Lock
+from threading import Thread, Lock
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 
-class PrometheusExporter():
+class PrometheusExporter(BaseHTTPRequestHandler):
 
     def __init__(self):
         self._prom = {}
         self._lock = Lock()
-    
+
+        
     def reg(self, name, datatype, helpstr):
         with self._lock:
             if name not in self._prom:
@@ -32,7 +34,7 @@ class PrometheusExporter():
             data[namestr] = {'value': value}
          
     
-    def render():
+    def render(self):
         lines = []
 
         with self._lock:
@@ -41,12 +43,43 @@ class PrometheusExporter():
                 if len(self._prom[k]['data']) == 0:
                        continue
                 
-                lines.append('HELP {k} {h}'.format(k=k, h=self._prom[k]['help']))
-                lines.append('TYPE {k} {t}'.format(k=k, t=self._prom[k]['type']))
+                lines.append('# HELP {k} {h}'.format(
+                    k=k,
+                    h=self._prom[k]['help']))
+                lines.append('# TYPE {k} {t}'.format(
+                    k=k,
+                    t=self._prom[k]['type']))
         
                 data = self._prom[k]['data']
                 for i in data.keys():
-                    lines.append('{n} {v}'.format(n=i, v=data[i]['value']))
+                    lines.append('{n} {v}'.format(
+                        n=i, v=data[i]['value']))
     
         return '\n'.join(lines)
-    
+
+
+    def _run_http_server(self):
+        httpd = ThreadingHTTPServer(('localhost', 8000), PromHttpRequestHandler)
+        httpd.prom = self
+        httpd.serve_forever()
+
+        
+    def start_server_thread(self):
+        srv_thread = Thread(
+            target=self._run_http_server,
+            name='http_server')
+        srv_thread.start()
+
+        
+class PromHttpRequestHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/metrics':
+            prom = self.server.prom
+            
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(prom.render().encode('utf-8'))
+        else:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b'Please use /metrics path.')
