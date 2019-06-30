@@ -1,10 +1,13 @@
-import paho.mqtt.client as mqtt
-import os
 import json
-from pprint import pprint
+import os
+import signal
+import sys
 import traceback
+
+import paho.mqtt.client as mqtt
+
 from prom import PrometheusExporter
-    
+
 
 pe = PrometheusExporter()
 
@@ -92,9 +95,17 @@ def mqtt_setup(host, port):
     mqttc.connect(host, port)
 
     return mqttc
-    
 
+
+def sigterm_handler(signum, stack_frame):
+    print('Terminating tasmoqtt. Bye!')
+    mqttc
+    sys.exit(0)
+
+    
 def main():
+    signal.signal(signal.SIGTERM, sigterm_handler)
+    
     pe.reg(
         name='tasmota_temperature',
         datatype='gauge',

@@ -59,7 +59,7 @@ class PrometheusExporter(BaseHTTPRequestHandler):
 
 
     def _run_http_server(self):
-        httpd = ThreadingHTTPServer(('localhost', 8000), PromHttpRequestHandler)
+        httpd = ThreadingHTTPServer(('0.0.0.0', 8000), PromHttpRequestHandler)
         httpd.prom = self
         httpd.serve_forever()
 
@@ -67,7 +67,8 @@ class PrometheusExporter(BaseHTTPRequestHandler):
     def start_server_thread(self):
         srv_thread = Thread(
             target=self._run_http_server,
-            name='http_server')
+            name='http_server',
+            daemon=True)
         srv_thread.start()
 
         
