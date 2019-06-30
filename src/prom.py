@@ -1,12 +1,14 @@
+import logging
 from threading import Thread, Lock
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
-
 class PrometheusExporter(BaseHTTPRequestHandler):
 
-    def __init__(self):
+    def __init__(self, http_iface, http_port):
         self._prom = {}
         self._lock = Lock()
+        self._http_iface = http_iface
+        self._http_port = http_port
 
         
     def reg(self, name, datatype, helpstr):
@@ -22,17 +24,21 @@ class PrometheusExporter(BaseHTTPRequestHandler):
             ['{0}="{1}"'.format(k, labels[k]) for k in sorted(labels.keys())]
         )
         
+        if name not in self._prom:
+            logging.error("Cannot set unknown measurement '{0}'.".format(name))
+            return
+
         namestr = '{name}{{{labels}}}'.format(
             name=name,
             labels=labelstr)
             
-        if name not in self._prom:
-            raise Exception('unknown measurement')
 
         with self._lock:
             data = self._prom[name]['data']
             data[namestr] = {'value': value}
-         
+
+        logging.debug('Set prom value {0} = {1}'.format(
+            namestr, value))
     
     def render(self):
         lines = []
@@ -59,7 +65,12 @@ class PrometheusExporter(BaseHTTPRequestHandler):
 
 
     def _run_http_server(self):
-        httpd = ThreadingHTTPServer(('0.0.0.0', 8000), PromHttpRequestHandler)
+        msg = 'Starting http server on {0}:{1}.'
+        logging.info(msg.format(self._http_iface, self._http_port))
+        
+        httpd = ThreadingHTTPServer(
+            (self._http_iface, self._http_port),
+            PromHttpRequestHandler)
         httpd.prom = self
         httpd.serve_forever()
 
@@ -84,3 +95,4 @@ class PromHttpRequestHandler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
             self.wfile.write(b'Please use /metrics path.')
+
