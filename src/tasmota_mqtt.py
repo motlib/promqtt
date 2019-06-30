@@ -24,29 +24,40 @@ class TasmotaMQTTClient():
         self._prom_exp.reg(
             name='tasmota_temperature',
             datatype='gauge',
-            helpstr='Temperature in degree celsius')
+            helpstr='Temperature in degree celsius',
+            timeout=300)
+        
         self._prom_exp.reg(
             name='tasmota_pressure',
             datatype='gauge',
-            helpstr='Air pressure in millibar')
+            helpstr='Air pressure in millibar',
+            timeout=300)
+        
         self._prom_exp.reg(
             name='tasmota_rel_humidity',
             datatype='gauge',
-            helpstr='Relative humidity in percent')
+            helpstr='Relative humidity in percent',
+            timeout=300)
 
         # tele_STATE
         self._prom_exp.reg(
             name='tasmota_vcc',
             datatype='gauge',
-            helpstr='Supply voltate of tasmota node')
+            helpstr='Supply voltate of tasmota node',
+            timeout=300)
+
         self._prom_exp.reg(
             name='tasmota_wifi_rssi',
             datatype='gauge',
-            helpstr='Relative wifi signal strength indicator')
+            helpstr='Relative wifi signal strength indicator',
+            timeout=300)
+        
         self._prom_exp.reg(
             name='tasmota_power',
             datatype='gauge',
-            helpstr='Power state of sonoff switch.')
+            helpstr='Power state of sonoff switch.',
+            timeout=300)
+
 
         
     def _handle_data(self, area, info, node_name, payload):

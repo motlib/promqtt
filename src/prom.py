@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from threading import Thread, Lock
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
@@ -11,10 +12,10 @@ class PrometheusExporter(BaseHTTPRequestHandler):
         self._http_port = http_port
 
         
-    def reg(self, name, datatype, helpstr):
+    def reg(self, name, datatype, helpstr, timeout=None):
         with self._lock:
             if name not in self._prom:
-                self._prom[name] = {'help': helpstr, 'type': datatype, 'data':{}}
+                self._prom[name] = {'help': helpstr, 'type': datatype, 'data':{}, 'timeout': None}
             else:
                 raise Exception('Measurement already registered')
 
@@ -39,12 +40,36 @@ class PrometheusExporter(BaseHTTPRequestHandler):
 
         logging.debug('Set prom value {0} = {1}'.format(
             namestr, value))
-    
+
+    def _check_timeout(self):
+        '''Remove all data which has timed out (not valid anymore).'''
+        to_delete = []
+        
+        for k in self._prom.keys():
+            to = self._prom[k]['timeout']
+            if to != None:
+                data = self._prom[k]['data']
+                for i in data.keys():
+                    if (datetime.now() - i['timestamp']).total_seconds() > to:
+                        to_delete.append(i)
+
+                for i in to_delete:
+                    del data[i]
+                    logging.debug("Removed timed out item '{0}'.".format(i)) 
+                    
+                to_delete.clear()
+
+        
     def render(self):
         lines = []
 
         with self._lock:
+
+            self._check_timeout()
+            
             for k in self._prom.keys():
+                data = self._prom[k]['data']
+                            
                 # do not output items without values
                 if len(self._prom[k]['data']) == 0:
                        continue
@@ -56,7 +81,6 @@ class PrometheusExporter(BaseHTTPRequestHandler):
                     k=k,
                     t=self._prom[k]['type']))
         
-                data = self._prom[k]['data']
                 for i in data.keys():
                     lines.append('{n} {v}'.format(
                         n=i, v=data[i]['value']))
