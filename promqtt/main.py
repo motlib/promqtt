@@ -67,6 +67,19 @@ def eval_args(args):
         _config['mqtt_prefix'] = args.mqtt_prefix
 
 
+def export_build_info(pe, title, version):
+    pe.reg(
+        name='tasmota_build_info',
+        datatype='gauge',
+        helpstr='Version info',
+        timeout=None)
+
+    pe.set(
+        name='tasmota_build_info',
+        value='1',
+        labels={'version': version})
+    
+
 def main():
     args = parse_args()
     eval_args(args)
@@ -82,6 +95,7 @@ def main():
     pe = PrometheusExporter(
         http_iface=_config['http_interface'],
         http_port=_config['http_port'])
+    export_build_info(pe, __title__, __version__)
     pe.start_server_thread()
 
     msg = 'Connecting to MQTT broker at {0}:{1}.'
