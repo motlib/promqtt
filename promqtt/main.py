@@ -7,13 +7,14 @@ import sys
 
 import paho.mqtt.client as mqtt
 
-from prom import PrometheusExporter
-from tasmota_mqtt import TasmotaMQTTClient
+from promqtt.__version__ import __title__, __version__
+from promqtt.prom import PrometheusExporter
+from promqtt.tasmota import TasmotaMQTTClient
 
 
 def sigterm_handler(signum, stack_frame):
     logging.info('Terminating promqtt. Bye!')
-    sys.exit(0)
+    os._exit(0)
 
 
 # configuration with default values
@@ -58,7 +59,9 @@ def eval_args(args):
 def main():
     logfmt = '[%(levelname)s] (%(threadName)s) %(message)s'
     logging.basicConfig(level=logging.DEBUG, format=logfmt)
-    logging.info('Starting promqtt.')    
+    logging.info('Starting {0} {1}'.format(
+        __title__,
+        __version__))    
 
     signal.signal(signal.SIGTERM, sigterm_handler)
 
@@ -81,7 +84,6 @@ def main():
 
     logging.debug('Start to run mqtt loop.')
     mqttc.loop_forever()
-
     
 
 if __name__ == '__main__':
