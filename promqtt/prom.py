@@ -1,7 +1,7 @@
-import logging
 from datetime import datetime
-from threading import Thread, Lock
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+import logging
+from threading import Thread, Lock
 
 class PrometheusExporter(BaseHTTPRequestHandler):
 
@@ -15,7 +15,11 @@ class PrometheusExporter(BaseHTTPRequestHandler):
     def reg(self, name, datatype, helpstr, timeout=None):
         with self._lock:
             if name not in self._prom:
-                self._prom[name] = {'help': helpstr, 'type': datatype, 'data':{}, 'timeout': None}
+                self._prom[name] = {
+                    'help': helpstr,
+                    'type': datatype,
+                    'data':{},
+                    'timeout': None}
             else:
                 raise Exception('Measurement already registered')
 

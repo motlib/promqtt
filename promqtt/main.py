@@ -32,7 +32,8 @@ def parse_args():
 
     parser.add_argument(
         '-i', '--http-interface',
-        help='Set the listening interface and port for the HTTP server, e.g. 127.0.0.1:8000',
+        help=('Set the listening interface and port for the HTTP server, '
+              'e.g. 127.0.0.1:8000'),
         required=False,
         default=None)
 
@@ -85,7 +86,4 @@ def main():
     logging.debug('Start to run mqtt loop.')
     mqttc.loop_forever()
     
-
-if __name__ == '__main__':
-    main()
 

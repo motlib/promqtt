@@ -66,13 +66,11 @@ class TasmotaMQTTClient():
         fctname = '_handle_{area}_{info}'.format(area=area, info=info)
         
         if hasattr(self, fctname):
-            logging.debug("Located handler '{0}'.".format(fctname))
-
             try:
                 fct = getattr(self, fctname)
                 fct(node_name, payload)
             except Exception as ex:
-                logging.exception("Handler failure in '{0}'.".format(fctname))
+                logging.exception("MQTT handler failure in '{0}'.".format(fctname))
         else:
             logging.debug("No handler '{0}' available.".format(fctname))
             
