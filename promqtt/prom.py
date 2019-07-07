@@ -5,14 +5,23 @@ from threading import Thread, Lock
 
 class PrometheusExporter(BaseHTTPRequestHandler):
 
-    def __init__(self, http_iface, http_port):
+    def __init__(self, http_cfg):
         self._prom = {}
         self._lock = Lock()
-        self._http_iface = http_iface
-        self._http_port = http_port
+        self._http_cfg = http_cfg
 
         
-    def reg(self, name, datatype, helpstr, timeout=None):
+    def register(self, name, datatype, helpstr, timeout=None):
+        '''Register a name for exporting. This must be called before calling 
+        `set()`.
+
+        :param str name: The name to register.
+        :param str type: One of gauge or counter.
+        :param str helpstr: The help information / comment to include in the 
+          output.
+        :param int timeout: Timeout in seconds for any value. Before rendering, 
+          values which are updated longer ago than this value, are removed.'''
+        
         with self._lock:
             if name not in self._prom:
                 self._prom[name] = {
@@ -24,7 +33,16 @@ class PrometheusExporter(BaseHTTPRequestHandler):
                 raise Exception('Measurement already registered')
 
     
-    def set(self, name, labels, value):
+    def set(self, name, labels, value, fmt='{0}'):
+        '''Set a value for exporting. 
+
+        :param str name: The name of the value to set. This name have been 
+          registered already by calling `register()`.
+        :param dict labels: The labels to attach to this name.
+        :param value: The value to set. Automatically converted to string.
+        :param fmt: The string format to use to convert value to a string. 
+          Default: '{0}'. '''
+
         labelstr = ','.join(
             ['{0}="{1}"'.format(k, labels[k]) for k in sorted(labels.keys())]
         )
@@ -37,14 +55,14 @@ class PrometheusExporter(BaseHTTPRequestHandler):
             name=name,
             labels=labelstr)
             
-
         with self._lock:
             data = self._prom[name]['data']
-            data[namestr] = {'value': value}
+            data[namestr] = {'value': fmt.format(value)}
 
         logging.debug('Set prom value {0} = {1}'.format(
             namestr, value))
 
+        
     def _check_timeout(self):
         '''Remove all data which has timed out (not valid anymore).'''
         to_delete = []
@@ -65,6 +83,11 @@ class PrometheusExporter(BaseHTTPRequestHandler):
 
         
     def render(self):
+        '''Render the current data to Prometheus format.
+
+        :returns: String with output suitable for consumption by Prometheus over 
+          HTTP. '''
+        
         lines = []
 
         with self._lock:
@@ -93,11 +116,11 @@ class PrometheusExporter(BaseHTTPRequestHandler):
 
 
     def _run_http_server(self):
-        msg = 'Starting http server on {0}:{1}.'
-        logging.info(msg.format(self._http_iface, self._http_port))
+        msg = 'Starting http server on {interface}:{port}.'
+        logging.info(msg.format(**self._http_cfg))
         
         httpd = ThreadingHTTPServer(
-            (self._http_iface, self._http_port),
+            (self._http_cfg['interface'], self._http_cfg['port']),
             PromHttpRequestHandler)
         httpd.prom = self
         httpd.serve_forever()
@@ -122,5 +145,5 @@ class PromHttpRequestHandler(BaseHTTPRequestHandler):
         else:
             self.send_response(404)
             self.end_headers()
-            self.wfile.write(b'Please use /metrics path.')
+            self.wfile.write(b'URL not found. Please use /metrics path.')
 

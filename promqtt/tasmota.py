@@ -1,66 +1,88 @@
 import json
 import logging
 
+import paho.mqtt.client as mqtt
+
+
 class TasmotaMQTTClient():
-    def __init__(self, mqttc, prom_exp, prefix):
-        self._mqttc = mqttc
+    def __init__(self, prom_exp, mqtt_cfg):
         self._prom_exp = prom_exp
 
+        self._timeout = mqtt_cfg['timeout']
+        msg = 'Setting MQTT timeout to {timeout}s.'
+        logging.debug(msg.format(**mqtt_cfg))
+        
         self._register_measurements()
         
-        # register callback for received messages
-        self._mqttc.on_message = self.on_mqtt_msg
-        
+        prefix = mqtt_cfg['prefix']
         while prefix.endswith('/'):
             prefix = prefix[:-1]
         self._prefix = prefix.split('/')
 
+        
+        msg = 'Connecting to MQTT broker at {broker}:{port}.'
+        logging.info(msg.format(**mqtt_cfg))
+        self._mqttc = mqtt.Client()
+        
+        # register callback for received messages
+        self._mqttc.on_message = self.on_mqtt_msg
+        
+        self._mqttc.connect(
+            host=mqtt_cfg['broker'],
+            port=mqtt_cfg['port'])
+
+        
         # we subscribe for everything below the prefix
         sub_topic = prefix + '/#'
         self._mqttc.subscribe(sub_topic)
         msg = "Tasmota client subscribing to '{0}'."
         logging.debug(msg.format(sub_topic))
+
+        
+    def loop_forever(self):
+        self._mqttc.loop_forever()
+        
         
     def _register_measurements(self):
         '''Register measurements for prometheus.'''
 
         # tele_SENSOR
-        self._prom_exp.reg(
+        self._prom_exp.register(
             name='tasmota_temperature',
             datatype='gauge',
             helpstr='Temperature in degree celsius',
-            timeout=300)
+            timeout=self._timeout)
         
-        self._prom_exp.reg(
+        self._prom_exp.register(
             name='tasmota_pressure',
             datatype='gauge',
             helpstr='Air pressure in millibar',
-            timeout=300)
+            timeout=self._timeout)
         
-        self._prom_exp.reg(
+        self._prom_exp.register(
             name='tasmota_rel_humidity',
             datatype='gauge',
             helpstr='Relative humidity in percent',
-            timeout=300)
+            timeout=self._timeout)
 
         # tele_STATE
-        self._prom_exp.reg(
+        self._prom_exp.register(
             name='tasmota_vcc',
             datatype='gauge',
             helpstr='Supply voltate of tasmota node',
-            timeout=300)
+            timeout=self._timeout)
 
-        self._prom_exp.reg(
+        self._prom_exp.register(
             name='tasmota_wifi_rssi',
             datatype='gauge',
             helpstr='Relative wifi signal strength indicator',
-            timeout=300)
+            timeout=self._timeout)
         
-        self._prom_exp.reg(
+        self._prom_exp.register(
             name='tasmota_power',
             datatype='gauge',
             helpstr='Power state of sonoff switch.',
-            timeout=300)
+            timeout=self._timeout)
 
 
         
