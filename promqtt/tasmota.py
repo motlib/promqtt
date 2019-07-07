@@ -5,17 +5,21 @@ class TasmotaMQTTClient():
     def __init__(self, mqttc, prom_exp, prefix):
         self._mqttc = mqttc
         self._prom_exp = prom_exp
-        self._prefix = prefix
 
         self._register_measurements()
         
         # register callback for received messages
         self._mqttc.on_message = self.on_mqtt_msg
         
+        while prefix.endswith('/'):
+            prefix = prefix[:-1]
+        self._prefix = prefix.split('/')
+
         # we subscribe for everything below the prefix
-        sub_topic = '/'.join(prefix) + '/#'
+        sub_topic = prefix + '/#'
         self._mqttc.subscribe(sub_topic)
-        
+        msg = "Tasmota client subscribing to '{0}'."
+        logging.debug(msg.format(sub_topic))
         
     def _register_measurements(self):
         '''Register measurements for prometheus.'''
