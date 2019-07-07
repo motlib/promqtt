@@ -112,4 +112,5 @@ def main():
     logging.debug('Start to run mqtt loop.')
     mqttc.loop_forever()
     
-
+if __name__ == '__main__':
+    main()

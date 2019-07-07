@@ -1,7 +1,16 @@
+'''Automatic configuration handling. Uses a config specification and generates a
+dict structure with configuration values populated from command-line,
+environment variables and possibly a configiration file.'''
+
 import argparse
 import os
 
 def _set_struct(cfg, name, value, sep='.'):
+    '''Parses a "path" string to locate the specified path in a dictionary to 
+    set a value. 
+
+    E.g. name='root.sub.val', value=foo => {'root': {'sub': {'val': 'foo'}}}'''
+    
     parts = name.split(sep)
 
     # loop over all but last part
