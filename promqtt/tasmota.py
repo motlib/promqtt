@@ -84,7 +84,6 @@ class TasmotaMQTTClient():
             helpstr='Power state of sonoff switch.',
             timeout=self._timeout)
 
-
         
     def _handle_data(self, area, info, node_name, payload):
         '''Try to find a handler function to process received message.'''

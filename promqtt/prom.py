@@ -4,7 +4,9 @@ import logging
 from threading import Thread, Lock
 
 class PrometheusExporter(BaseHTTPRequestHandler):
-
+    '''Manage all measurements and provide the htp interface for interfacing with
+    Prometheus.'''
+    
     def __init__(self, http_cfg):
         self._prom = {}
         self._lock = Lock()
@@ -36,7 +38,7 @@ class PrometheusExporter(BaseHTTPRequestHandler):
     def set(self, name, labels, value, fmt='{0}'):
         '''Set a value for exporting. 
 
-        :param str name: The name of the value to set. This name have been 
+        :param str name: The name of the value to set. This name must have been 
           registered already by calling `register()`.
         :param dict labels: The labels to attach to this name.
         :param value: The value to set. Automatically converted to string.
@@ -64,26 +66,36 @@ class PrometheusExporter(BaseHTTPRequestHandler):
 
         
     def _check_timeout(self):
-        '''Remove all data which has timed out (not valid anymore).'''
+        '''Remove all data which has timed out (i.e. is not valid anymore).'''
         to_delete = []
-        
+
+        # loop over all measurements
         for k in self._prom.keys():
             to = self._prom[k]['timeout']
-            if to != None:
-                data = self._prom[k]['data']
-                for i in data.keys():
-                    if (datetime.now() - i['timestamp']).total_seconds() > to:
-                        to_delete.append(i)
 
-                for i in to_delete:
-                    del data[i]
-                    logging.debug("Removed timed out item '{0}'.".format(i)) 
+            if to == None:
+                continue
+            
+            data = self._prom[k]['data']
+            now = datetime.now()
+
+            # first loop to find timed out items
+            for i in data.keys():
+                if (now - i['timestamp']).total_seconds() >= to:
+                    to_delete.append(i)
+
+            # second loop to remove them
+            for i in to_delete:
+                del data[i]
+                msg = "Removed timed out item '{0}'."
+                logging.debug(msg.format(i))
                     
-                to_delete.clear()
+            to_delete.clear()
 
         
     def render(self):
-        '''Render the current data to Prometheus format.
+        '''Render the current data to Prometheus format. See 
+        https://prometheus.io/docs/instrumenting/exposition_formats/ for details.
 
         :returns: String with output suitable for consumption by Prometheus over 
           HTTP. '''
@@ -116,17 +128,26 @@ class PrometheusExporter(BaseHTTPRequestHandler):
 
 
     def _run_http_server(self):
+        '''Start the http server to serve the prometheus data. This function 
+        does not return.'''
+        
         msg = 'Starting http server on {interface}:{port}.'
         logging.info(msg.format(**self._http_cfg))
         
         httpd = ThreadingHTTPServer(
             (self._http_cfg['interface'], self._http_cfg['port']),
             PromHttpRequestHandler)
+
+        # we attach our own instance to the server object, so that the request
+        # handler later can access it.
         httpd.prom = self
+        
         httpd.serve_forever()
 
         
     def start_server_thread(self):
+        '''Create a thread to run the http server serving the prometheus data.'''
+
         srv_thread = Thread(
             target=self._run_http_server,
             name='http_server',
