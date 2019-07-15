@@ -59,7 +59,13 @@ class PrometheusExporter(BaseHTTPRequestHandler):
             
         with self._lock:
             data = self._prom[name]['data']
-            data[namestr] = {'value': fmt.format(value)}
+
+            if value is not None:
+                data[namestr] = {'value': fmt.format(value)}
+            else:
+                # we remove the item when passing None as value 
+                if namestr in data:
+                    del data[namestr]
 
         logging.debug('Set prom value {0} = {1}'.format(
             namestr, value))
