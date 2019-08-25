@@ -23,7 +23,7 @@ measurements:
 
 types:
   # tasmota/tele/sens-lr1/STATE {"Time":"2019-08-25T08:41:21","Uptime":"8T21:01:00","Vcc":2.800,"SleepMode":"Dynamic","Sleep":50,"LoadAvg":19,"Wifi":{"AP":1,"SSId":"ChaosWLAN","BSSId":"7C:DD:90:D4:30:43","Channel":7,"RSSI":94,"LinkCount":1,"Downtime":"0T00:00:07"}}
-  tasmota:
+  tasmota_node:
     topic: "tasmota/tele/+/STATE"
     parse: "json"
     channels:
@@ -37,11 +37,7 @@ types:
         value: "{msg[val][Wifi][RSSI]}"
         labels: { 'node': "{msg[topic][2]}" }
 
-        
-        
-devices:
-  tasmota_bme280_sensors:
-    types: ['tasmota']
+  tasmota_bme280:
     topic: "tasmota/tele/+/SENSOR"
     parse: "json"
     channels:
@@ -51,15 +47,72 @@ devices:
         labels: { 'node': '{msg[topic][2]}', 'sensor': 'BME280' }
         
       pressure:
-        topic: "tasmota/tele/+/SENSOR"
         measurement: "tasmota_pressure"
         value: "{msg[val][BME280][Pressure]}"
         labels: { 'node': '{msg[topic][2]}', 'sensor': 'BME280' }
         
       humidity:
-        topic: "tasmota/tele/+/SENSOR"
         measurement: "tasmota_humidity"
         value: "{msg[val][BME280][Humidity]}"
         labels: { 'node': '{msg[topic][2]}', 'sensor': 'BME280' }
-
+        
+  aqara_sensor:
+    types: []
+    topic: "zigbee2mqtt/+"
+    parse: "json"
+    channels:
+      temperature:
+        measurement: "tasmota_temperature"
+        value: "{msg[val][temperature]}"
+        labels: { 'node': '{msg[topic][1]}', 'sensor': 'aqara' }
+        
+      pressure:
+        measurement: "tasmota_pressure"
+        value: "{msg[val][pressure]}"
+        labels: { 'node': '{msg[topic][1]}', 'sensor': 'aqara' }
+        
+      humidity:
+        measurement: "tasmota_humidity"
+        value: "{msg[val][humidity]}"
+        labels: { 'node': '{msg[topic][1]}', 'sensor': 'aqara' }
+      
+  # zigbee2mqtt/aqara_sens_1 {"temperature":25.99,"linkquality":86,"humidity":45.86,"pressure":999,"battery":91,"voltage":2985}
+  aqara_node:
+    parse: "json"
+    channels:
+      rssi:
+        measurement: "tasmota_rssi"
+        value: "{msg[val][linkquality]}"
+        labels: { 'node': '{msg[topic][1]}', 'sensor': 'aqara' }
+        
+devices:
+  aqara_switch:
+    types: ['aqara_node']
+    channels: {}
+    topic: "zigbee2mqtt/aqara_switch_1"
+    
+  aqara_sensor:
+    types: ['aqara_node']
+    topic: "zigbee2mqtt/aqara_sens_1"
+    parse: "json"
+    channels:
+      temperature:
+        measurement: "tasmota_temperature"
+        value: "{msg[val][temperature]}"
+        labels: { 'node': '{msg[topic][1]}', 'sensor': 'aqara' }
+        
+      pressure:
+        measurement: "tasmota_pressure"
+        value: "{msg[val][pressure]}"
+        labels: { 'node': '{msg[topic][1]}', 'sensor': 'aqara' }
+        
+      humidity:
+        measurement: "tasmota_humidity"
+        value: "{msg[val][humidity]}"
+        labels: { 'node': '{msg[topic][1]}', 'sensor': 'aqara' }
+        
+        
+  tasmota_bme280_sensors:
+    types: ['tasmota_node', 'tasmota_bme280']
+    channels: {}
       

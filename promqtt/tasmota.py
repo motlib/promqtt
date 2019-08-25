@@ -1,5 +1,6 @@
 import json
 import logging
+from copy import deepcopy
 
 import paho.mqtt.client as mqtt
 from ruamel.yaml import YAML
@@ -62,7 +63,7 @@ class TasmotaMQTTClient():
                 # update channels from type to device
                 for chname, ch in typ['channels'].items():
                     if chname not in dev['channels']:
-                        dev['channels'][chname] = ch
+                        dev['channels'][chname] = deepcopy(ch)
 
                 for name, val in typ.items():
                     # all value types can be inherited, but no structures
@@ -78,12 +79,6 @@ class TasmotaMQTTClient():
                         if (name not in ch):
                             ch[name] = dev[name]
 
-        # split topic strings
-        for devname, dev in self._cfg['devices'].items():
-            for ch in dev['channels'].values():
-                ch['topic'] = ch['topic'].split('/')
-
-
         # put name as key / value pair to devices and channels
         for devname, dev in self._cfg['devices'].items():
             dev['_dev_name'] = devname
@@ -94,6 +89,13 @@ class TasmotaMQTTClient():
 
         import pprint
         pprint.pprint(self._cfg['devices'])
+
+        # split topic strings
+        for devname, dev in self._cfg['devices'].items():
+            for ch in dev['channels'].values():
+                ch['topic'] = ch['topic'].split('/')
+
+
                 
         #import sys
         #sys.exit(0)
@@ -157,6 +159,7 @@ class TasmotaMQTTClient():
                     print('failing')
                     print('ch', ch)
                     print('msg', msg_data)
+                    print(ex)
 
             
     def _handle_channel(self, dev, ch, msg_data):
