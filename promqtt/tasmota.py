@@ -44,20 +44,60 @@ class TasmotaMQTTClient():
 
         
     def _preproc_devs(self):
+        types = self._cfg['types']
+
+        # push down type settings to type channels
+        for typename, typ in self._cfg['types'].items():
+            for name, val in typ.items():
+                if not isinstance(val, dict):
+                    for chname, ch in typ['channels'].items():
+                        if (name not in ch):
+                            ch[name] = typ[name]
+
+        # inverit from types to devices
+        for devname, dev in self._cfg['devices'].items():
+            for devtype in dev['types']:
+                typ = types[devtype]
+                
+                # update channels from type to device
+                for chname, ch in typ['channels'].items():
+                    if chname not in dev['channels']:
+                        dev['channels'][chname] = ch
+
+                for name, val in typ.items():
+                    # all value types can be inherited, but no structures
+                    if not isinstance(val, dict) and (name not in dev):
+                        dev[name] = val
+                        
+        
         # push down device settings to channels
+        for dev in self._cfg['devices'].values():
+            for name, val in dev.items():
+                if not isinstance(val, dict):
+                    for ch in dev['channels'].values():
+                        if (name not in ch):
+                            ch[name] = dev[name]
 
-        dev_ch_keys = ['topic', 'parse']
-        for dev in self._cfg['devices']:
-            for ch in dev['channels']:
-                for key in dev_ch_keys:
-                    if (key not in ch) and (key in dev):
-                        ch[key] = dev[key]
-
-        
-        for dev in self._cfg['devices']:
-            for ch in dev['channels']:
+        # split topic strings
+        for devname, dev in self._cfg['devices'].items():
+            for ch in dev['channels'].values():
                 ch['topic'] = ch['topic'].split('/')
-        
+
+
+        # put name as key / value pair to devices and channels
+        for devname, dev in self._cfg['devices'].items():
+            dev['_dev_name'] = devname
+            
+            for chname, ch in dev['channels'].items():
+                ch['_ch_name'] = chname
+                
+
+        import pprint
+        pprint.pprint(self._cfg['devices'])
+                
+        #import sys
+        #sys.exit(0)
+
         
     def loop_forever(self):
         self._mqttc.loop_forever()
@@ -100,7 +140,7 @@ class TasmotaMQTTClient():
                 'topic': msg.topic.split('/'),
             }
         
-            for dev in self._cfg['devices']:
+            for dev in self._cfg['devices'].values():
                 self._handle_device(dev, msg_data)
                 
         except Exception as ex:
@@ -109,9 +149,14 @@ class TasmotaMQTTClient():
 
             
     def _handle_device(self, dev, msg_data):
-        for ch in dev['channels']:
+        for ch in dev['channels'].values():
             if self._is_topic_matching(ch['topic'], msg_data['topic']):
-                self._handle_channel(dev, ch, msg_data)
+                try:
+                    self._handle_channel(dev, ch, msg_data)
+                except Exception as ex:
+                    print('failing')
+                    print('ch', ch)
+                    print('msg', msg_data)
 
             
     def _handle_channel(self, dev, ch, msg_data):
@@ -120,15 +165,17 @@ class TasmotaMQTTClient():
         else:
             msg_data['val'] = msg_data['raw_payload']
 
-        value = ch['value'].format(dev=dev, ch=ch, msg=msg_data)
+        bind_value = ch['value'].format(dev=dev, ch=ch, msg=msg_data)
 
         bind_labels = {
             k.format(dev=dev, ch=ch, msg=msg_data):
             v.format(dev=dev, ch=ch, msg=msg_data)
             for k,v in ch['labels'].items()}
+
+        bind_measurement = ch['measurement'].format(dev=dev, ch=ch, msg=msg_data)
         
         self._prom_exp.set(
-            name=ch['measurement'],
-            value=value,
+            name=bind_measurement,
+            value=bind_value,
             labels=bind_labels)
 

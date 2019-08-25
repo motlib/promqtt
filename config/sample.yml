@@ -12,26 +12,51 @@ measurements:
     type: gauge
     help: Temperature in degree celsius
     timeout: 120
+  tasmota_rssi:
+    type: gauge
+    help: Relative wifi signal strength indicator
+    timeout: 120
+  tasmota_vcc:
+    type: gauge
+    help: Node supply voltage in volt
+    timeout: 120
 
+types:
+  # tasmota/tele/sens-lr1/STATE {"Time":"2019-08-25T08:41:21","Uptime":"8T21:01:00","Vcc":2.800,"SleepMode":"Dynamic","Sleep":50,"LoadAvg":19,"Wifi":{"AP":1,"SSId":"ChaosWLAN","BSSId":"7C:DD:90:D4:30:43","Channel":7,"RSSI":94,"LinkCount":1,"Downtime":"0T00:00:07"}}
+  tasmota:
+    topic: "tasmota/tele/+/STATE"
+    parse: "json"
+    channels:
+      vcc:
+        measurement: "tasmota_{ch[_ch_name]}"
+        value: "{msg[val][Vcc]}"
+        labels: { 'node': "{msg[topic][2]}" }
 
+      rssi:
+        measurement: "tasmota_{ch[_ch_name]}"
+        value: "{msg[val][Wifi][RSSI]}"
+        labels: { 'node': "{msg[topic][2]}" }
+
+        
+        
 devices:
-  - name: tasmora_bme280_sensors
-    type: ['tasmota', 'tasmota_bme280']
+  tasmota_bme280_sensors:
+    types: ['tasmota']
     topic: "tasmota/tele/+/SENSOR"
     parse: "json"
     channels:
-      - name: temperature
+      temperature:
         measurement: "tasmota_temperature"
         value: "{msg[val][BME280][Temperature]}"
         labels: { 'node': '{msg[topic][2]}', 'sensor': 'BME280' }
         
-      - name: pressure
+      pressure:
         topic: "tasmota/tele/+/SENSOR"
         measurement: "tasmota_pressure"
         value: "{msg[val][BME280][Pressure]}"
         labels: { 'node': '{msg[topic][2]}', 'sensor': 'BME280' }
         
-      - name: humidity
+      humidity:
         topic: "tasmota/tele/+/SENSOR"
         measurement: "tasmota_humidity"
         value: "{msg[val][BME280][Humidity]}"
