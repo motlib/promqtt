@@ -1,0 +1,37 @@
+
+measurements:
+  tasmota_pressure:
+    type: gauge
+    help: Air pressure in millibar
+    timeout: 120
+  tasmota_humidity:
+    type: gauge
+    help: Relative humidity in percent
+    timeout: 120
+  tasmota_temperature:
+    type: gauge
+    help: Temperature in degree celsius
+    timeout: 120
+
+
+devices:
+  - name: sens_bathroom
+    type: ['tasmota', 'tasmota_bme280']
+    channels:
+      - name: temperature
+        topic: "tasmota/tele/+/SENSOR"
+        parse: "json"
+        measurement: "tasmota_temperature"
+        value: "{msg[val][BME280][Temperature]}"
+        labels: { 'node': '{msg[topic][2]}', 'sensor': 'BME280' }
+        
+#      - name: humidity
+#        topic: "/tasmota/tele/sens-br1/SENSOR"
+#        jsonpath: "$.BME280.humidity"
+#        measurement: tasmota_humidity
+#        
+#      - name: pressure
+#        topic: "/tasmota/tele/sens-br1/SENSOR"
+#        jsonpath: "$.BME280.pressure"
+#        measurement: tasmota_pressure
+      

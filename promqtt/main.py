@@ -65,7 +65,7 @@ def main():
     export_build_info(pe, __title__, __version__)
     pe.start_server_thread()
 
-    tmc = TasmotaMQTTClient(pe, mqtt_cfg=cfg['mqtt'])
+    tmc = TasmotaMQTTClient(pe, mqtt_cfg=cfg['mqtt'], cfgfile=cfg['cfgfile'])
     tmc.loop_forever()
     
 if __name__ == '__main__':

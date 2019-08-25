@@ -36,4 +36,9 @@ cfg_desc = {
         'help': 'Verbose (debug) output.',
         'default': False
     },
+    'cfgfile': {
+        'type': str,
+        'help': 'Configuration file',
+        'default': 'promqtt.yml',
+    }
 }

@@ -2,16 +2,20 @@ import json
 import logging
 
 import paho.mqtt.client as mqtt
+from ruamel.yaml import YAML
 
 
 class TasmotaMQTTClient():
-    def __init__(self, prom_exp, mqtt_cfg):
+    def __init__(self, prom_exp, mqtt_cfg, cfgfile):
         self._prom_exp = prom_exp
 
-        self._timeout = mqtt_cfg['timeout']
-        msg = 'Setting MQTT timeout to {timeout}s.'
-        logging.debug(msg.format(**mqtt_cfg))
-        
+        yaml = YAML(typ='safe')
+
+        with open(cfgfile) as f:
+            self._cfg = yaml.load(f)
+
+        self._preproc_devs()
+            
         self._register_measurements()
         
         prefix = mqtt_cfg['prefix']
@@ -33,11 +37,17 @@ class TasmotaMQTTClient():
 
         
         # we subscribe for everything below the prefix
-        sub_topic = prefix + '/#'
+        sub_topic = '#'
         self._mqttc.subscribe(sub_topic)
         msg = "Tasmota client subscribing to '{0}'."
         logging.debug(msg.format(sub_topic))
 
+        
+    def _preproc_devs(self):
+        for dev in self._cfg['devices']:
+            for ch in dev['channels']:
+                ch['topic'] = ch['topic'].split('/')
+        
         
     def loop_forever(self):
         self._mqttc.loop_forever()
@@ -46,126 +56,69 @@ class TasmotaMQTTClient():
     def _register_measurements(self):
         '''Register measurements for prometheus.'''
 
-        # tele_SENSOR
-        self._prom_exp.register(
-            name='tasmota_temperature',
-            datatype='gauge',
-            helpstr='Temperature in degree celsius',
-            timeout=self._timeout)
+        for name, meas in self._cfg['measurements'].items():
+            msg = 'Registering measurement {0}'
+            logging.debug(msg.format(name))
+            self._prom_exp.register(
+                name=name,
+                datatype=meas['type'], 
+                helpstr=meas['help'],
+                timeout=meas['timeout'] if meas['timeout'] else None)
         
-        self._prom_exp.register(
-            name='tasmota_pressure',
-            datatype='gauge',
-            helpstr='Air pressure in millibar',
-            timeout=self._timeout)
-        
-        self._prom_exp.register(
-            name='tasmota_rel_humidity',
-            datatype='gauge',
-            helpstr='Relative humidity in percent',
-            timeout=self._timeout)
+    
+    def _is_topic_matching(self, ch_topic, msg_topic):
+        print('matching', ch_topic, 'and', msg_topic)
 
-        # tele_STATE
-        self._prom_exp.register(
-            name='tasmota_vcc',
-            datatype='gauge',
-            helpstr='Supply voltate of tasmota node',
-            timeout=self._timeout)
+        if len(ch_topic) != len(msg_topic):
+            return False
+        
+        result = all(
+            ((part=='+') or (part==msg_topic[i]))
+            for i, part in enumerate(ch_topic))
 
-        self._prom_exp.register(
-            name='tasmota_wifi_rssi',
-            datatype='gauge',
-            helpstr='Relative wifi signal strength indicator',
-            timeout=self._timeout)
-        
-        self._prom_exp.register(
-            name='tasmota_power',
-            datatype='gauge',
-            helpstr='Power state of sonoff switch.',
-            timeout=self._timeout)
+        print('result', result)
 
-        
-    def _handle_data(self, area, info, node_name, payload):
-        '''Try to find a handler function to process received message.'''
-        
-        fctname = '_handle_{area}_{info}'.format(area=area, info=info)
-        
-        if hasattr(self, fctname):
-            try:
-                fct = getattr(self, fctname)
-                fct(node_name, payload)
-            except Exception as ex:
-                logging.exception("MQTT handler failure in '{0}'.".format(fctname))
-        else:
-            logging.debug("No handler '{0}' available.".format(fctname))
-            
+        return result
         
     def on_mqtt_msg(self, client, obj, msg):
         '''Handle incoming MQTT message.'''
+
+        try:
+            msg_data = {
+                'raw_topic': msg.topic,
+                'raw_payload': msg.payload,
+                'topic': msg.topic.split('/'),
+            }
         
-        tparts = msg.topic.split('/')
-
-        # check for the expected prefix
-        for i,name in enumerate(self._prefix):
-            if tparts[i] != name:
-                return
-
-        # discard prefix
-        tparts = tparts[len(self._prefix):]
-
-        area = tparts[0] # stats, tele, ...
-        node_name = tparts[1] # the node name
-        info = tparts[2] # SENSOR, STATE, ...
-
-        self._handle_data(area, info, node_name, msg.payload)
-
-        
-    def _handle_tele_SENSOR(self, node_name, payload):
-        data = json.loads(payload)
-
-        #tasmota/tele/sens-br1/SENSOR
-        # {"Time":"2019-06-29T14:27:51","BME280":{"Temperature":25.5,
-        #  "Humidity":76.0,"Pressure":991.2
-        # },"PressureUnit":"hPa","TempUnit":"C"}
-        if 'BME280' in data:
-            self._prom_exp.set(
-                name='tasmota_temperature',
-                value=data['BME280']['Temperature'],
-                labels={'node': node_name, 'sensor': 'BME280'})
-            self._prom_exp.set(
-                name='tasmota_rel_humidity',
-                value=data['BME280']['Humidity'],
-                labels={'node': node_name, 'sensor': 'BME280'})
-            self._prom_exp.set(
-                name='tasmota_pressure',
-                value=data['BME280']['Pressure'],
-                labels={'node': node_name, 'sensor': 'BME280'})
-        else:
-            msg = "Recevied message for unsupported sensor from node '{0}'."
-            logging.warning(msg.format(node_name))
+            for dev in self._cfg['devices']:
+                self._handle_device(dev, msg_data)
+                
+        except Exception as ex:
+            logging.exception('fail')
+            print(ex)
 
             
-    def _handle_tele_STATE(self, node_name, payload):
-        #tasmota/tele/sens-br1/STATE
-        #b'{"Time":"2019-06-29T15:27:51","Uptime":"13T05:21:05","Vcc":2.818,
-        #   "SleepMode":"Dynamic","Sleep":50,"LoadAvg":19,
-        #   "Wifi":{"AP":1,"SSId":"ChaosWLAN","BSSId":"7C:DD:90:D4:30:43",
-        #     "Channel":7,"RSSI":96,"LinkCount":2,"Downtime":"5T14:55:50"}}'
-        data = json.loads(payload)
-    
-        self._prom_exp.set(
-            name='tasmota_vcc',
-            value=data['Vcc'],
-            labels={'node': node_name})
-        self._prom_exp.set(
-            name='tasmota_wifi_rssi',
-            value=data['Wifi']['RSSI'],
-            labels={'node': node_name})
+    def _handle_device(self, dev, msg_data):
+        for ch in dev['channels']:
+            if self._is_topic_matching(ch['topic'], msg_data['topic']):
+                self._handle_channel(dev, ch, msg_data)
+
+            
+    def _handle_channel(self, dev, ch, msg_data):
+        if ch['parse'] == 'json':
+            msg_data['val'] = json.loads(msg_data['raw_payload'])
+        else:
+            msg_data['val'] = msg_data['raw_payload']
+
+        value = ch['value'].format(dev=dev, ch=ch, msg=msg_data)
+
+        bind_labels = {
+            k.format(dev=dev, ch=ch, msg=msg_data):
+            v.format(dev=dev, ch=ch, msg=msg_data)
+            for k,v in ch['labels'].items()}
         
-        if 'POWER' in data:
-            value = 1 if data['POWER'] == 'ON' else 0
-            self._prom_exp.set(
-                name='tasmota_power',
-                value=value,
-                labels={'node': node_name})
-                   
+        self._prom_exp.set(
+            name=ch['measurement'],
+            value=value,
+            labels=bind_labels)
+
