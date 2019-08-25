@@ -44,6 +44,16 @@ class TasmotaMQTTClient():
 
         
     def _preproc_devs(self):
+        # push down device settings to channels
+
+        dev_ch_keys = ['topic', 'parse']
+        for dev in self._cfg['devices']:
+            for ch in dev['channels']:
+                for key in dev_ch_keys:
+                    if (key not in ch) and (key in dev):
+                        ch[key] = dev[key]
+
+        
         for dev in self._cfg['devices']:
             for ch in dev['channels']:
                 ch['topic'] = ch['topic'].split('/')

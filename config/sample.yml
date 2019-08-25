@@ -17,30 +17,24 @@ measurements:
 devices:
   - name: tasmora_bme280_sensors
     type: ['tasmota', 'tasmota_bme280']
+    topic: "tasmota/tele/+/SENSOR"
+    parse: "json"
     channels:
       - name: temperature
-        topic: "tasmota/tele/+/SENSOR"
-        parse: "json"
         measurement: "tasmota_temperature"
         value: "{msg[val][BME280][Temperature]}"
         labels: { 'node': '{msg[topic][2]}', 'sensor': 'BME280' }
         
       - name: pressure
         topic: "tasmota/tele/+/SENSOR"
-        parse: json
         measurement: "tasmota_pressure"
         value: "{msg[val][BME280][Pressure]}"
         labels: { 'node': '{msg[topic][2]}', 'sensor': 'BME280' }
         
       - name: humidity
         topic: "tasmota/tele/+/SENSOR"
-        parse: json
         measurement: "tasmota_humidity"
         value: "{msg[val][BME280][Humidity]}"
         labels: { 'node': '{msg[topic][2]}', 'sensor': 'BME280' }
 
-        #      - name: pressure
-#        topic: "/tasmota/tele/sens-br1/SENSOR"
-#        jsonpath: "$.BME280.pressure"
-#        measurement: tasmota_pressure
       
