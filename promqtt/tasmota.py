@@ -67,8 +67,9 @@ class TasmotaMQTTClient():
         
     
     def _is_topic_matching(self, ch_topic, msg_topic):
-        print('matching', ch_topic, 'and', msg_topic)
-
+        '''Check if the msg_topic (already split as list) matches the ch_topic (also
+        split as list).'''
+        
         if len(ch_topic) != len(msg_topic):
             return False
         
@@ -76,10 +77,9 @@ class TasmotaMQTTClient():
             ((part=='+') or (part==msg_topic[i]))
             for i, part in enumerate(ch_topic))
 
-        print('result', result)
-
         return result
-        
+
+    
     def on_mqtt_msg(self, client, obj, msg):
         '''Handle incoming MQTT message.'''
 
