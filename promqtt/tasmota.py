@@ -36,27 +36,28 @@ class TasmotaMQTTClient():
             host=mqtt_cfg['broker'],
             port=mqtt_cfg['port'])
 
-        
         # we subscribe for everything below the prefix
         sub_topic = '#'
         self._mqttc.subscribe(sub_topic)
         msg = "Tasmota client subscribing to '{0}'."
         logging.debug(msg.format(sub_topic))
 
+
+    def _push_dev_settings_to_channels(self, devs):
+        '''Push settings from device level down to channel level.'''
         
-    def _preproc_devs(self):
-        types = self._cfg['types']
-
-        # push down type settings to type channels
-        for typename, typ in self._cfg['types'].items():
-            for name, val in typ.items():
+        for devname, dev in devs.items():
+            for name, val in dev.items():
                 if not isinstance(val, dict):
-                    for chname, ch in typ['channels'].items():
+                    for chname, ch in dev['channels'].items():
                         if (name not in ch):
-                            ch[name] = typ[name]
+                            ch[name] = dev[name]
+        
 
-        # inverit from types to devices
-        for devname, dev in self._cfg['devices'].items():
+    def _inherit_from_types(self, types, devs):
+        '''Inherit settins from types to devices.'''
+        
+        for devname, dev in devs.items():
             for devtype in dev['types']:
                 typ = types[devtype]
                 
@@ -69,37 +70,44 @@ class TasmotaMQTTClient():
                     # all value types can be inherited, but no structures
                     if not isinstance(val, dict) and (name not in dev):
                         dev[name] = val
-                        
-        
-        # push down device settings to channels
-        for dev in self._cfg['devices'].values():
-            for name, val in dev.items():
-                if not isinstance(val, dict):
-                    for ch in dev['channels'].values():
-                        if (name not in ch):
-                            ch[name] = dev[name]
 
-        # put name as key / value pair to devices and channels
-        for devname, dev in self._cfg['devices'].items():
+                        
+    def _set_name_attribute(self, devs):
+        '''Add _name attribute from dictionary key to devices and channels.'''
+        for devname, dev in devs.items():
             dev['_dev_name'] = devname
             
             for chname, ch in dev['channels'].items():
                 ch['_ch_name'] = chname
+
                 
-
-        import pprint
-        pprint.pprint(self._cfg['devices'])
-
-        # split topic strings
-        for devname, dev in self._cfg['devices'].items():
+    def _split_topics(self, devs):
+        '''Convert string topics to lists (split at /).'''
+        
+        for devname, dev in devs.items():
             for ch in dev['channels'].values():
                 ch['topic'] = ch['topic'].split('/')
+        
+                                        
+    def _preproc_devs(self):
 
+        # push down type settings to type channels
+        self._push_dev_settings_to_channels(self._cfg['types'])
 
-                
-        #import sys
-        #sys.exit(0)
+        # inverit from types to devices
+        self._inherit_from_types(
+            types=self._cfg['types'],
+            devs=self._cfg['devices'])
+        
+        # push down device settings to channels
+        self._push_dev_settings_to_channels(self._cfg['devices'])
 
+        # put name as key / value pair to devices and channels
+        self._set_name_attribute(self._cfg['devices'])
+
+        # split topic strings
+        self._split_topics(self._cfg['devices'])
+        
         
     def loop_forever(self):
         self._mqttc.loop_forever()
