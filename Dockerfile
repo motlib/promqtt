@@ -1,8 +1,10 @@
 FROM python:3.7
 
-RUN python -m pip install paho-mqtt
+COPY requirements.txt /tmp
 
-RUN mkdir tasmota_mqtt
-COPY . /tasmota_mqtt
+RUN pip install -r /tmp/requirements.txt
 
-CMD ["python", "-u", "/tasmota_mqtt/promqtt.py"]
+RUN mkdir /promqtt
+COPY . /promqtt
+
+CMD ["python", "-u", "/promqtt/promqtt.py"]
