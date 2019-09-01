@@ -11,7 +11,7 @@ from promqtt.tasmota import TasmotaMQTTClient
 
 from promqtt.configer import prepare_argparser, eval_cfg
 from promqtt.cfgdesc import cfg_desc
-
+from promqtt.http import HttpServer
 
 def sigterm_handler(signum, stack_frame):
     logging.info('Terminating promqtt. Bye!')
@@ -61,12 +61,20 @@ def main():
     
     signal.signal(signal.SIGTERM, sigterm_handler)
 
-    pe = PrometheusExporter(http_cfg=cfg['http'])
+    pe = PrometheusExporter()
     export_build_info(pe, __title__, __version__)
-    pe.start_server_thread()
+
+    routes = {
+        '/metrics': pe.render,
+        '/cfg_json': lambda: json.dumps(cfg, indent=4),        
+    }
+    
+    httpsrv = HttpServer(http_cfg=cfg['http'], routes=routes)
+    httpsrv.start_server_thread()
 
     tmc = TasmotaMQTTClient(pe, mqtt_cfg=cfg['mqtt'], cfgfile=cfg['cfgfile'])
     tmc.loop_forever()
+
     
 if __name__ == '__main__':
     main()

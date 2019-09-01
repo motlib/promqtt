@@ -1,5 +1,4 @@
 from datetime import datetime
-from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import logging
 from threading import Thread, Lock
 
@@ -10,14 +9,13 @@ class PrometheusExporterException(Exception):
     pass
 
 
-class PrometheusExporter(BaseHTTPRequestHandler):
+class PrometheusExporter():
     '''Manage all measurements and provide the htp interface for interfacing with
     Prometheus.'''
     
-    def __init__(self, http_cfg):
+    def __init__(self):
         self._prom = {}
         self._lock = Lock()
-        self._http_cfg = http_cfg
 
         
     def register(self, name, datatype, helpstr, timeout=None):
@@ -149,46 +147,3 @@ class PrometheusExporter(BaseHTTPRequestHandler):
                         n=i, v=data[i]['value']))
     
         return '\n'.join(lines)
-
-
-    def _run_http_server(self):
-        '''Start the http server to serve the prometheus data. This function 
-        does not return.'''
-        
-        msg = 'Starting http server on {interface}:{port}.'
-        logging.info(msg.format(**self._http_cfg))
-        
-        httpd = ThreadingHTTPServer(
-            (self._http_cfg['interface'], self._http_cfg['port']),
-            PromHttpRequestHandler)
-
-        # we attach our own instance to the server object, so that the request
-        # handler later can access it.
-        httpd.prom = self
-        
-        httpd.serve_forever()
-
-        
-    def start_server_thread(self):
-        '''Create a thread to run the http server serving the prometheus data.'''
-
-        srv_thread = Thread(
-            target=self._run_http_server,
-            name='http_server',
-            daemon=True)
-        srv_thread.start()
-
-        
-class PromHttpRequestHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == '/metrics':
-            prom = self.server.prom
-            
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(prom.render().encode('utf-8'))
-        else:
-            self.send_response(404)
-            self.end_headers()
-            self.wfile.write(b'URL not found. Please use /metrics path.')
-
