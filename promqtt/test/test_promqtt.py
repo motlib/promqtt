@@ -16,8 +16,7 @@ def _has_line(promexp, line):
 def promexp():
     '''Create a new prometheus exporter instance.'''
     
-    http_cfg = {'interface':'127.0.0.01', 'port': 13541}
-    pe = PrometheusExporter(http_cfg)
+    pe = PrometheusExporter()
 
     return pe
 
