@@ -3,14 +3,24 @@ import pytest
 from promqtt.prom import PrometheusExporter
 
 
+def _has_line(promexp, line):
+    out = promexp.render().split('\n')
+    
+    return any(map(lambda l: l == line, out))
+
+
 @pytest.fixture
 def promexp():
+    '''Create a new prometheus exporter instance.'''
+    
     http_cfg = {'interface':'127.0.0.01', 'port': 13541}
     pe = PrometheusExporter(http_cfg)
 
     return pe
 
+
 def test_promqtt_register(promexp):
+    '''Register measurement and check that it's not yet in the output.'''
     promexp.register(
         name='test_meas_1',
         datatype='gauge',
@@ -25,10 +35,6 @@ def test_promqtt_register(promexp):
     assert(not hasline)
     
 
-# Example 
-# # HELP tasmota_humidity Relative humidity in percent
-# # TYPE tasmota_humidity gauge
-# tasmota_humidity{node="sens-bathroom-1",sensor="BME280"} 63.8
 def test_promqtt_set(promexp):
     '''Setting a value to a registered measurement works fine.'''
     
@@ -43,11 +49,9 @@ def test_promqtt_set(promexp):
         value=12.3,
         labels={'foo': 'bar'})
 
-    out = promexp.render().split('\n')
-    
-    assert(any(map(lambda l: l.startswith('# HELP test_meas_1 yeah'), out)))
-    assert(any(map(lambda l: l.startswith('# TYPE test_meas_1 gauge'), out)))
-    assert(any(map(lambda l: l.startswith('test_meas_1{foo="bar"} 12.3'), out)))
+    assert(_has_line(promexp, '# HELP test_meas_1 yeah'))
+    assert(_has_line(promexp, '# TYPE test_meas_1 gauge'))
+    assert(_has_line(promexp, 'test_meas_1{foo="bar"} 12.3'))
 
     
     
@@ -61,10 +65,3 @@ def test_promqtt_not_registered(promexp):
         labels={})
 
     
-def test_promqtt_register2(promexp):
-    out = promexp.render()
-    
-    hasline = any(map(lambda l: l.startswith('test_meas_1'), out.split('\n')))
-
-    assert(not hasline)
-
