@@ -6,11 +6,13 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 class PromHttpRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path in self.server.srv.routes:
-            route_fct = self.server.srv.routes[self.path]
+            route = self.server.srv.routes[self.path]
+
             self.send_response(200)
+            self.send_header('Content-type', route['type'])
             self.end_headers()
             
-            self.wfile.write(route_fct().encode('utf-8'))
+            self.wfile.write(route['fct']().encode('utf-8'))
         else:
             self.send_response(404)
             self.end_headers()

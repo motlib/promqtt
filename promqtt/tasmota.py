@@ -3,27 +3,17 @@ import logging
 from copy import deepcopy
 
 import paho.mqtt.client as mqtt
-from ruamel.yaml import YAML
 
 
 class TasmotaMQTTClient():
-    def __init__(self, prom_exp, mqtt_cfg, cfgfile):
+    def __init__(self, prom_exp, mqtt_cfg, cfg):
         self._prom_exp = prom_exp
 
-        yaml = YAML(typ='safe')
-
-        with open(cfgfile) as f:
-            self._cfg = yaml.load(f)
+        self._cfg = cfg
 
         self._preproc_devs()
             
         self._register_measurements()
-        
-        prefix = mqtt_cfg['prefix']
-        while prefix.endswith('/'):
-            prefix = prefix[:-1]
-        self._prefix = prefix.split('/')
-
         
         msg = 'Connecting to MQTT broker at {broker}:{port}.'
         logging.info(msg.format(**mqtt_cfg))

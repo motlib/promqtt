@@ -5,20 +5,26 @@ import os
 import signal
 import sys
 
+from ruamel.yaml import YAML
+
 from promqtt.__version__ import __title__, __version__
+from promqtt.cfgdesc import cfg_desc
+from promqtt.configer import prepare_argparser, eval_cfg
+from promqtt.http import HttpServer
 from promqtt.prom import PrometheusExporter
 from promqtt.tasmota import TasmotaMQTTClient
 
-from promqtt.configer import prepare_argparser, eval_cfg
-from promqtt.cfgdesc import cfg_desc
-from promqtt.http import HttpServer
 
 def sigterm_handler(signum, stack_frame):
+    '''Handle the SIGTERM signal by shutting down.'''
+    
     logging.info('Terminating promqtt. Bye!')
     os._exit(0)
     
 
 def parse_args():
+    '''Set up the command-line parser and parse arguments.'''
+    
     parser = argparse.ArgumentParser(
         description="Tasmota MQTT to Prometheus exporter.")
     
@@ -28,6 +34,8 @@ def parse_args():
 
 
 def export_build_info(pe, title, version):
+    '''Export build information for prometheus.'''
+    
     pe.register(
         name='tasmota_build_info',
         datatype='gauge',
@@ -41,6 +49,8 @@ def export_build_info(pe, title, version):
 
     
 def setup_logging(verbose):
+    '''Configure the logging.'''
+    
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
         format='[%(levelname)s] (%(threadName)s) %(message)s')
@@ -51,28 +61,44 @@ def setup_logging(verbose):
     
     
 def main():
+    signal.signal(signal.SIGTERM, sigterm_handler)
+
     args = parse_args()
     
     # currently we do not load a config file
     filecfg = {}
     cfg = eval_cfg(cfg_desc, filecfg, os.environ, args)
-    
     setup_logging(cfg['verbose'])
-    
-    signal.signal(signal.SIGTERM, sigterm_handler)
+
+
+    # load device configuration
+    yaml = YAML(typ='safe')
+    with open(cfg['cfgfile']) as f:
+        devcfg = yaml.load(f)
+        
 
     pe = PrometheusExporter()
     export_build_info(pe, __title__, __version__)
 
     routes = {
-        '/metrics': pe.render,
-        '/cfg_json': lambda: json.dumps(cfg, indent=4),        
+        '/metrics': {
+            'type': 'text/plain',
+            'fct': pe.render
+        },
+        '/cfg_json': {
+            'type': 'application/json',
+            'fct': lambda: json.dumps(cfg, indent=4)
+        },
+        '/devcfg_json': {
+            'type': 'application/json',
+            'fct': lambda: json.dumps(devcfg, indent=4)
+        },
     }
     
     httpsrv = HttpServer(http_cfg=cfg['http'], routes=routes)
     httpsrv.start_server_thread()
 
-    tmc = TasmotaMQTTClient(pe, mqtt_cfg=cfg['mqtt'], cfgfile=cfg['cfgfile'])
+    tmc = TasmotaMQTTClient(pe, mqtt_cfg=cfg['mqtt'], cfg=devcfg)
     tmc.loop_forever()
 
     
