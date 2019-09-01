@@ -1,0 +1,17 @@
+# setup
+language: python
+dist: xenial
+python:
+  - "3.7"
+
+# command to install dependencies
+install:
+  - "pip install pipenv"
+  - "pipenv sync --dev"
+  
+# command to run tests
+script:
+  - "pytest --verbose"
+  # this should exit with 1 only for fatal and error findings. Otherwise exit
+  # code is 0 and the build is regarded successful.
+  #- "pylint pybinmap; exit $(($? & 3))"
