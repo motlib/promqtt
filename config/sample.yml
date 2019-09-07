@@ -23,6 +23,8 @@ measurements:
 
 types:
   # tasmota/tele/sens-lr1/STATE {"Time":"2019-08-25T08:41:21","Uptime":"8T21:01:00","Vcc":2.800,"SleepMode":"Dynamic","Sleep":50,"LoadAvg":19,"Wifi":{"AP":1,"SSId":"ChaosWLAN","BSSId":"7C:DD:90:D4:30:43","Channel":7,"RSSI":94,"LinkCount":1,"Downtime":"0T00:00:07"}}
+
+  # generic tasmota node providing vcc and wifi rssi
   tasmota_node:
     topic: "tasmota/tele/+/STATE"
     parse: "json"
@@ -37,6 +39,7 @@ types:
         value: "{msg[val][Wifi][RSSI]}"
         labels: { 'node': "{msg[topic][2]}" }
 
+  # BME280 sensor attached to a tasmota node
   tasmota_bme280:
     topic: "tasmota/tele/+/SENSOR"
     parse: "json"
@@ -55,6 +58,16 @@ types:
         measurement: "tasmota_humidity"
         value: "{msg[val][BME280][Humidity]}"
         labels: { 'node': '{msg[topic][2]}', 'sensor': 'BME280' }
+
+  tasmota_switch:
+    topic: "tasmota/tele/+/STATE"
+    parse: "json"
+    channels:
+      state:
+        measurement: "tasmota_power"
+        value: "{msg[val][POWER]}"
+        labels: { 'node': '{msg[topic][2]}' }
+        eval: "{'ON': 1, 'OFF': 0}.get(msg[val],-1)"
         
   aqara_sensor:
     types: []
