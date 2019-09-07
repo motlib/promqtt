@@ -21,16 +21,6 @@ cfg_desc = {
         'help': 'MQTT broker port number',
         'default': 1883,
     },
-    'mqtt.prefix': {
-        'type': str,
-        'help': 'MQTT topic prefix to skip',
-        'default': 'tasmota',
-    },
-    'mqtt.timeout': {
-        'type': int,
-        'help': 'Timeout of MQTT sensor values in seconds.',
-        'default': 300,
-    },
     'verbose': {
         'type': bool,
         'help': 'Verbose (debug) output.',
@@ -38,7 +28,7 @@ cfg_desc = {
     },
     'cfgfile': {
         'type': str,
-        'help': 'Configuration file',
+        'help': 'Device configuration file',
         'default': 'promqtt.yml',
     }
 }
