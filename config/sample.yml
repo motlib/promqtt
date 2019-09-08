@@ -20,6 +20,11 @@ measurements:
     type: gauge
     help: Node supply voltage in volt
     timeout: 120
+  tasmota_power:
+    type: gauge
+    help: Power state
+    timeout: 120
+    
 
 types:
   # tasmota/tele/sens-lr1/STATE {"Time":"2019-08-25T08:41:21","Uptime":"8T21:01:00","Vcc":2.800,"SleepMode":"Dynamic","Sleep":50,"LoadAvg":19,"Wifi":{"AP":1,"SSId":"ChaosWLAN","BSSId":"7C:DD:90:D4:30:43","Channel":7,"RSSI":94,"LinkCount":1,"Downtime":"0T00:00:07"}}
@@ -31,12 +36,12 @@ types:
     channels:
       vcc:
         measurement: "tasmota_{ch[_ch_name]}"
-        value: "{msg[val][Vcc]}"
+        value: "{value[Vcc]}"
         labels: { 'node': "{msg[topic][2]}" }
 
       rssi:
         measurement: "tasmota_{ch[_ch_name]}"
-        value: "{msg[val][Wifi][RSSI]}"
+        value: "{value[Wifi][RSSI]}"
         labels: { 'node': "{msg[topic][2]}" }
 
   # BME280 sensor attached to a tasmota node
@@ -46,17 +51,17 @@ types:
     channels:
       temperature:
         measurement: "tasmota_temperature"
-        value: "{msg[val][BME280][Temperature]}"
+        value: "{value[BME280][Temperature]}"
         labels: { 'node': '{msg[topic][2]}', 'sensor': 'BME280' }
         
       pressure:
         measurement: "tasmota_pressure"
-        value: "{msg[val][BME280][Pressure]}"
+        value: "{value[BME280][Pressure]}"
         labels: { 'node': '{msg[topic][2]}', 'sensor': 'BME280' }
         
       humidity:
         measurement: "tasmota_humidity"
-        value: "{msg[val][BME280][Humidity]}"
+        value: "{value[BME280][Humidity]}"
         labels: { 'node': '{msg[topic][2]}', 'sensor': 'BME280' }
 
   tasmota_switch:
@@ -65,9 +70,11 @@ types:
     channels:
       state:
         measurement: "tasmota_power"
-        value: "{msg[val][POWER]}"
+        value: "{value[POWER]}"
+        map:
+          ON: 1
+          OFF: 0
         labels: { 'node': '{msg[topic][2]}' }
-        eval: "{'ON': 1, 'OFF': 0}.get(msg[val],-1)"
         
   aqara_sensor:
     types: []
@@ -76,17 +83,17 @@ types:
     channels:
       temperature:
         measurement: "tasmota_temperature"
-        value: "{msg[val][temperature]}"
+        value: "{value[temperature]}"
         labels: { 'node': '{msg[topic][1]}', 'sensor': 'aqara' }
         
       pressure:
         measurement: "tasmota_pressure"
-        value: "{msg[val][pressure]}"
+        value: "{value[pressure]}"
         labels: { 'node': '{msg[topic][1]}', 'sensor': 'aqara' }
         
       humidity:
         measurement: "tasmota_humidity"
-        value: "{msg[val][humidity]}"
+        value: "{value[humidity]}"
         labels: { 'node': '{msg[topic][1]}', 'sensor': 'aqara' }
       
   # zigbee2mqtt/aqara_sens_1 {"temperature":25.99,"linkquality":86,"humidity":45.86,"pressure":999,"battery":91,"voltage":2985}
@@ -95,37 +102,31 @@ types:
     channels:
       rssi:
         measurement: "tasmota_rssi"
-        value: "{msg[val][linkquality]}"
+        value: "{value[linkquality]}"
+        labels: { 'node': '{msg[topic][1]}', 'sensor': 'aqara' }
+      vcc:
+        measurement: "tasmota_vcc"
+        value: "{value[voltage]}"
+        factor: 0.001
+        offset: 0
         labels: { 'node': '{msg[topic][1]}', 'sensor': 'aqara' }
         
 devices:
   aqara_switch:
     types: ['aqara_node']
-    channels: {}
     topic: "zigbee2mqtt/aqara_switch_1"
+    # Todo: deal with devices without channels (all inherited)
+    channels: {}
     
   aqara_sensor:
-    types: ['aqara_node']
+    types: ['aqara_node', 'aqara_sensor']
     topic: "zigbee2mqtt/aqara_sens_1"
-    parse: "json"
-    channels:
-      temperature:
-        measurement: "tasmota_temperature"
-        value: "{msg[val][temperature]}"
-        labels: { 'node': '{msg[topic][1]}', 'sensor': 'aqara' }
-        
-      pressure:
-        measurement: "tasmota_pressure"
-        value: "{msg[val][pressure]}"
-        labels: { 'node': '{msg[topic][1]}', 'sensor': 'aqara' }
-        
-      humidity:
-        measurement: "tasmota_humidity"
-        value: "{msg[val][humidity]}"
-        labels: { 'node': '{msg[topic][1]}', 'sensor': 'aqara' }
-        
+    channels: {}
         
   tasmota_bme280_sensors:
     types: ['tasmota_node', 'tasmota_bme280']
     channels: {}
       
+  tasmota_switch:
+    types: ['tasmota_node', 'tasmota_switch']
+    channels: {}

@@ -1,9 +1,8 @@
 import json
 import logging
-from copy import deepcopy
 
 import paho.mqtt.client as mqtt
-
+from promqtt.device_loader import prepare_devices
 
 class TasmotaMQTTClient():
     def __init__(self, prom_exp, mqtt_cfg, cfg):
@@ -11,7 +10,7 @@ class TasmotaMQTTClient():
 
         self._cfg = cfg
 
-        self._preproc_devs()
+        prepare_devices(cfg)
             
         self._register_measurements()
         
@@ -26,77 +25,12 @@ class TasmotaMQTTClient():
             host=mqtt_cfg['broker'],
             port=mqtt_cfg['port'])
 
-        # we subscribe for everything below the prefix
+        # TODO: we should not subscribe for everything below the prefix
         sub_topic = '#'
         self._mqttc.subscribe(sub_topic)
+
         msg = "Tasmota client subscribing to '{0}'."
         logging.debug(msg.format(sub_topic))
-
-
-    def _push_dev_settings_to_channels(self, devs):
-        '''Push settings from device level down to channel level.'''
-        
-        for devname, dev in devs.items():
-            for name, val in dev.items():
-                if not isinstance(val, dict):
-                    for chname, ch in dev['channels'].items():
-                        if (name not in ch):
-                            ch[name] = dev[name]
-        
-
-    def _inherit_from_types(self, types, devs):
-        '''Inherit settins from types to devices.'''
-        
-        for devname, dev in devs.items():
-            for devtype in dev['types']:
-                typ = types[devtype]
-                
-                # update channels from type to device
-                for chname, ch in typ['channels'].items():
-                    if chname not in dev['channels']:
-                        dev['channels'][chname] = deepcopy(ch)
-
-                for name, val in typ.items():
-                    # all value types can be inherited, but no structures
-                    if not isinstance(val, dict) and (name not in dev):
-                        dev[name] = val
-
-                        
-    def _set_name_attribute(self, devs):
-        '''Add _name attribute from dictionary key to devices and channels.'''
-        for devname, dev in devs.items():
-            dev['_dev_name'] = devname
-            
-            for chname, ch in dev['channels'].items():
-                ch['_ch_name'] = chname
-
-                
-    def _split_topics(self, devs):
-        '''Convert string topics to lists (split at /).'''
-        
-        for devname, dev in devs.items():
-            for ch in dev['channels'].values():
-                ch['topic'] = ch['topic'].split('/')
-        
-                                        
-    def _preproc_devs(self):
-
-        # push down type settings to type channels
-        self._push_dev_settings_to_channels(self._cfg['types'])
-
-        # inverit from types to devices
-        self._inherit_from_types(
-            types=self._cfg['types'],
-            devs=self._cfg['devices'])
-        
-        # push down device settings to channels
-        self._push_dev_settings_to_channels(self._cfg['devices'])
-
-        # put name as key / value pair to devices and channels
-        self._set_name_attribute(self._cfg['devices'])
-
-        # split topic strings
-        self._split_topics(self._cfg['devices'])
         
         
     def loop_forever(self):
@@ -154,29 +88,68 @@ class TasmotaMQTTClient():
                 try:
                     self._handle_channel(dev, ch, msg_data)
                 except Exception as ex:
-                    print('failing')
-                    print('ch', ch)
-                    print('msg', msg_data)
-                    print(ex)
+                    msg = "Failed to handle device '{dev}', channel '{ch}'."
+                    logging.exception(msg.format(
+                        dev=dev['_dev_name'],
+                        ch=ch['_ch_name']))
 
             
     def _handle_channel(self, dev, ch, msg_data):
+        # Step 1: parse value
         if ch['parse'] == 'json':
-            msg_data['val'] = json.loads(msg_data['raw_payload'])
+            value = json.loads(msg_data['raw_payload'])
         else:
-            msg_data['val'] = msg_data['raw_payload']
+            value = msg_data['raw_payload']
 
-        bind_value = ch['value'].format(dev=dev, ch=ch, msg=msg_data)
+        # Step 2: Extract value from payload (e.g. a specific value from JSON
+        # structure) by string formatting
+        try:
+            value = ch['value'].format(dev=dev, ch=ch, msg=msg_data, value=value)
+        except KeyError as k:
+            msg = (
+                "Failed to process value access in device '{dev}', "
+                "channel '{ch}', expression '{expr}' for payload '{payload}'."
+            )
+            logging.debug(msg.format(
+                dev=dev['_dev_name'],
+                ch=ch['_ch_name'],
+                expr=ch['value'],
+                payload=msg_data['raw_payload']))
+            return
 
+        # Step 3: map string values to numeric values
+        if 'map' in ch:
+            if value in ch['map']:
+                value = ch['map'][value]
+            else:
+                value = float('nan')
+                        
+        # Step 4: scale
+        if ('factor' in ch) or ('offset' in ch):
+            try:
+                value = (float(value)
+                              * ch.get('factor', 1.0)
+                              + ch.get('offset', 0.0))
+            except:
+                # generate "not a number" value
+                value = float('nan')
+
+        # legacy
+        msg_data['val'] = value
+                
         bind_labels = {
             k.format(dev=dev, ch=ch, msg=msg_data):
             v.format(dev=dev, ch=ch, msg=msg_data)
             for k,v in ch['labels'].items()}
 
-        bind_measurement = ch['measurement'].format(dev=dev, ch=ch, msg=msg_data)
+        measurement = ch['measurement'].format(
+            dev=dev,
+            ch=ch,
+            msg=msg_data,
+            value=value)
         
         self._prom_exp.set(
-            name=bind_measurement,
-            value=bind_value,
+            name=measurement,
+            value=value,
             labels=bind_labels)
 
