@@ -12,7 +12,7 @@ from ruamel.yaml import YAML
 from promqtt.__version__ import __title__, __version__
 from promqtt.cfgdesc import cfg_desc
 from promqtt.configer import prepare_argparser, eval_cfg
-from promqtt.http import HttpServer
+from .httpsrv import HttpServer, Route
 from promqtt.prom import PrometheusExporter
 from promqtt.tasmota import TasmotaMQTTClient
 
@@ -86,26 +86,19 @@ def main():
     with open(cfg['cfgfile'], mode='r', encoding='utf-8') as fhdl:
         devcfg = yaml.load(fhdl)
 
-
     promexp = PrometheusExporter()
     export_build_info(promexp, __version__)
 
-    routes = {
-        '/metrics': {
-            'type': 'text/plain',
-            'fct': promexp.render
-        },
-        '/cfg_json': {
-            'type': 'application/json',
-            'fct': lambda: json.dumps(cfg, indent=4)
-        },
-        '/devcfg_json': {
-            'type': 'application/json',
-            'fct': lambda: json.dumps(devcfg, indent=4)
-        },
-    }
+    routes = [
+        Route('/metrics', 'text/plain', promexp.render),
+        Route('/cfg_json', 'application/json', lambda: json.dumps(cfg, indent=4)),
+        Route('/devcfg_json', 'application/json', lambda: json.dumps(devcfg, indent=4)),
+    ]
 
-    httpsrv = HttpServer(http_cfg=cfg['http'], routes=routes)
+    httpsrv = HttpServer(
+        netif=cfg['http']['interface'],
+        port=cfg['http']['port'],
+        routes=routes)
     httpsrv.start_server_thread()
 
     tmc = TasmotaMQTTClient(promexp, mqtt_cfg=cfg['mqtt'], cfg=devcfg)
