@@ -1,3 +1,5 @@
+'''Application main implementation'''
+
 import argparse
 import json
 import logging
@@ -21,8 +23,11 @@ logger = logging.getLogger(__name__)
 def sigterm_handler(signum, stack_frame):
     '''Handle the SIGTERM signal by shutting down.'''
 
+    del signum
+    del stack_frame
+
     logger.info('Terminating promqtt. Bye!')
-    os._exit(0)
+    sys.exit(0)
 
 
 def parse_args():
@@ -36,16 +41,16 @@ def parse_args():
     return parser.parse_args()
 
 
-def export_build_info(pe, title, version):
+def export_build_info(promexp, version):
     '''Export build information for prometheus.'''
 
-    pe.register(
+    promexp.register(
         name='tasmota_build_info',
         datatype='gauge',
         helpstr='Version info',
         timeout=None)
 
-    pe.set(
+    promexp.set(
         name='tasmota_build_info',
         value='1',
         labels={'version': version})
@@ -62,6 +67,10 @@ def setup_logging(verbose):
 
 
 def main():
+    '''Application main function'''
+
+    # Set up handler to terminate if we receive SIGTERM, e.g. when the user
+    # presses Ctrl-C.
     signal.signal(signal.SIGTERM, sigterm_handler)
 
     args = parse_args()
@@ -74,17 +83,17 @@ def main():
 
     # load device configuration
     yaml = YAML(typ='safe')
-    with open(cfg['cfgfile']) as f:
-        devcfg = yaml.load(f)
+    with open(cfg['cfgfile'], mode='r', encoding='utf-8') as fhdl:
+        devcfg = yaml.load(fhdl)
 
 
-    pe = PrometheusExporter()
-    export_build_info(pe, __title__, __version__)
+    promexp = PrometheusExporter()
+    export_build_info(promexp, __version__)
 
     routes = {
         '/metrics': {
             'type': 'text/plain',
-            'fct': pe.render
+            'fct': promexp.render
         },
         '/cfg_json': {
             'type': 'application/json',
@@ -99,7 +108,7 @@ def main():
     httpsrv = HttpServer(http_cfg=cfg['http'], routes=routes)
     httpsrv.start_server_thread()
 
-    tmc = TasmotaMQTTClient(pe, mqtt_cfg=cfg['mqtt'], cfg=devcfg)
+    tmc = TasmotaMQTTClient(promexp, mqtt_cfg=cfg['mqtt'], cfg=devcfg)
     tmc.loop_forever()
 
 

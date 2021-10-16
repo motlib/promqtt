@@ -1,3 +1,5 @@
+'''Implementation of the HTTP server to serve prometheus data.'''
+
 import logging
 from threading import Thread
 
@@ -8,7 +10,11 @@ logger = logging.getLogger(__name__)
 
 
 class PromHttpRequestHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
+    '''Request handler serving the prometheus data'''
+
+    def do_GET(self): # pylint: disable=invalid-name
+        '''Handler for GET requests'''
+
         if self.path in self.server.srv.routes:
             route = self.server.srv.routes[self.path]
 
@@ -24,6 +30,8 @@ class PromHttpRequestHandler(BaseHTTPRequestHandler):
 
 
 class HttpServer():
+    '''Implementation of the HTTP server'''
+
     def __init__(self, http_cfg, routes):
         self._http_cfg = http_cfg
         self._routes = routes
@@ -31,6 +39,8 @@ class HttpServer():
 
     @property
     def routes(self):
+        '''Return the routes'''
+
         return self._routes
 
 
