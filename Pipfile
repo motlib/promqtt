@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 paho-mqtt = "*"
 "ruamel.yaml" = "*"
+pylint = "*"
 
 [dev-packages]
 pytest = "*"
