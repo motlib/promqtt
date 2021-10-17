@@ -7,6 +7,7 @@ import os
 import signal
 import sys
 
+import coloredlogs
 from ruamel.yaml import YAML
 
 from .__version__ import __title__, __version__
@@ -58,6 +59,8 @@ def export_build_info(promexp, version):
 
 def setup_logging(verbose):
     '''Configure the logging.'''
+
+    coloredlogs.install()
 
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
