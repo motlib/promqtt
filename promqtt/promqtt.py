@@ -29,7 +29,7 @@ class MqttPrometheusBridge():
     '''Client for receiving messages from MQTT and parsing them and publishing
     them for prometheus.'''
 
-    def __init__(self, prom_exp, mqtt_cfg, cfg):
+    def __init__(self, prom_exp, mqtt_broker, mqtt_port, cfg):
         self._prom_exp = prom_exp
 
         self._cfg = cfg
@@ -39,16 +39,14 @@ class MqttPrometheusBridge():
         self._register_measurements()
 
         logger.info(
-            f'Connecting to MQTT broker at {mqtt_cfg["broker"]}:{mqtt_cfg["port"]}.')
+            f'Connecting to MQTT broker at {mqtt_broker}:{mqtt_port}.')
 
         self._mqttc = mqtt.Client()
 
         # register callback for received messages
         self._mqttc.on_message = self.on_mqtt_msg
 
-        self._mqttc.connect(
-            host=mqtt_cfg['broker'],
-            port=mqtt_cfg['port'])
+        self._mqttc.connect(host=mqtt_broker, port=mqtt_port)
 
         logger.info('Connection to MQTT broker established.')
 

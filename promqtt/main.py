@@ -16,7 +16,7 @@ from .configer import prepare_argparser, eval_cfg
 from .httpsrv import HttpServer, Route
 from .promexp import PrometheusExporter
 from .promqtt import MqttPrometheusBridge
-
+from .utils import StructWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ def export_build_info(promexp, version):
 def setup_logging(verbose):
     '''Configure the logging.'''
 
-    coloredlogs.install()
+    coloredlogs.install(level=logging.DEBUG if verbose else logging.INFO)
 
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
@@ -68,23 +68,30 @@ def setup_logging(verbose):
 
     logger.info(f'Starting {__title__} {__version__}')
 
-def setup_http_server():
-    routes = [
-        Route('/metrics', 'text/plain', promexp.render),
-        Route('/cfg', 'application/json', lambda: json.dumps(cfg, indent=4)),
-        Route('/devcfg', 'application/json', lambda: json.dumps(devcfg, indent=4)),
-    ]
+    if verbose:
+        logger.debug('Enabled verbose output.')
 
-    httpsrv = HttpServer(
-        netif=cfg['http']['interface'],
-        port=cfg['http']['port'],
-        routes=routes)
-    httpsrv.start_server_thread()
 
+def load_config(filename):
+    '''Load the configuration file.'''
+
+    logger.info(f"Loading config file '{filename}'.")
+
+    yaml = YAML(typ='safe')
+    with open(filename, mode='r', encoding='utf-8') as fhdl:
+        cfg = yaml.load(fhdl)
+
+    return StructWrapper(cfg)
 
 
 def main():
     '''Application main function'''
+
+    # Set up logging
+
+    verbose = bool(os.environ.get('PROMQTT_VERBOSE', ''))
+    setup_logging(verbose)
+
 
     # Set up handler to terminate if we receive SIGTERM, e.g. when the user
     # presses Ctrl-C.
@@ -92,23 +99,34 @@ def main():
 
     args = parse_args()
 
-    # currently we do not load a config file
-    filecfg = {}
-    cfg = eval_cfg(cfg_desc, filecfg, os.environ, args)
-    setup_logging(cfg['verbose'])
 
-    # load device configuration
-    yaml = YAML(typ='safe')
-    with open(cfg['cfgfile'], mode='r', encoding='utf-8') as fhdl:
-        devcfg = yaml.load(fhdl)
+    # load configuration
+
+    cfgfile = os.environ.get('PROMQTT_CONFIG', 'promqtt.yml')
+    cfg = load_config(cfgfile)
 
     promexp = PrometheusExporter()
     export_build_info(promexp, __version__)
 
     # Intialize and start the HTTP server
-    setup_http_server()
 
-    tmc = MqttPrometheusBridge(promexp, mqtt_cfg=cfg['mqtt'], cfg=devcfg)
+    routes = [
+        Route('/metrics', 'text/plain', promexp.render),
+        Route('/cfg', 'application/json', lambda: json.dumps(cfg.raw, indent=4)),
+    ]
+
+    httpsrv = HttpServer(
+        netif=cfg.http_interface,
+        port=cfg.http_port,
+        routes=routes)
+    httpsrv.start_server_thread()
+
+
+    tmc = MqttPrometheusBridge(
+        promexp,
+        mqtt_broker=cfg.mqtt_broker,
+        mqtt_port=cfg.mqtt_port,
+        cfg=cfg.raw)
     tmc.loop_forever()
 
 
