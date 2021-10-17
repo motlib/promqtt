@@ -9,12 +9,12 @@ import sys
 
 from ruamel.yaml import YAML
 
-from promqtt.__version__ import __title__, __version__
-from promqtt.cfgdesc import cfg_desc
-from promqtt.configer import prepare_argparser, eval_cfg
+from .__version__ import __title__, __version__
+from .cfgdesc import cfg_desc
+from .configer import prepare_argparser, eval_cfg
 from .httpsrv import HttpServer, Route
-from promqtt.prom import PrometheusExporter
-from promqtt.tasmota import TasmotaMQTTClient
+from .promexp import PrometheusExporter
+from .promqtt import MqttPrometheusBridge
 
 
 logger = logging.getLogger(__name__)
@@ -65,6 +65,20 @@ def setup_logging(verbose):
 
     logger.info(f'Starting {__title__} {__version__}')
 
+def setup_http_server():
+    routes = [
+        Route('/metrics', 'text/plain', promexp.render),
+        Route('/cfg', 'application/json', lambda: json.dumps(cfg, indent=4)),
+        Route('/devcfg', 'application/json', lambda: json.dumps(devcfg, indent=4)),
+    ]
+
+    httpsrv = HttpServer(
+        netif=cfg['http']['interface'],
+        port=cfg['http']['port'],
+        routes=routes)
+    httpsrv.start_server_thread()
+
+
 
 def main():
     '''Application main function'''
@@ -80,7 +94,6 @@ def main():
     cfg = eval_cfg(cfg_desc, filecfg, os.environ, args)
     setup_logging(cfg['verbose'])
 
-
     # load device configuration
     yaml = YAML(typ='safe')
     with open(cfg['cfgfile'], mode='r', encoding='utf-8') as fhdl:
@@ -89,19 +102,10 @@ def main():
     promexp = PrometheusExporter()
     export_build_info(promexp, __version__)
 
-    routes = [
-        Route('/metrics', 'text/plain', promexp.render),
-        Route('/cfg_json', 'application/json', lambda: json.dumps(cfg, indent=4)),
-        Route('/devcfg_json', 'application/json', lambda: json.dumps(devcfg, indent=4)),
-    ]
+    # Intialize and start the HTTP server
+    setup_http_server()
 
-    httpsrv = HttpServer(
-        netif=cfg['http']['interface'],
-        port=cfg['http']['port'],
-        routes=routes)
-    httpsrv.start_server_thread()
-
-    tmc = TasmotaMQTTClient(promexp, mqtt_cfg=cfg['mqtt'], cfg=devcfg)
+    tmc = MqttPrometheusBridge(promexp, mqtt_cfg=cfg['mqtt'], cfg=devcfg)
     tmc.loop_forever()
 
 

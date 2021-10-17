@@ -25,7 +25,7 @@ def _is_topic_matching(ch_topic, msg_topic):
     return result
 
 
-class TasmotaMQTTClient():
+class MqttPrometheusBridge():
     '''Client for receiving messages from MQTT and parsing them and publishing
     them for prometheus.'''
 
