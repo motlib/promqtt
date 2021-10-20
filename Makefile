@@ -1,3 +1,8 @@
+# Makefile to run development tools
+
+.PHONY: all
+all: pylint pytest
+
 
 .PHONY: pylint
 pylint:
@@ -9,4 +14,8 @@ pylint:
 
 .PHONY: pytest
 pytest:
-	pipenv run pytest --verbose
+	mkdir -p ./build/cov
+	pipenv run pytest \
+	  --cov=promqtt \
+	  --cov-report=html:./build/cov \
+	  --verbose

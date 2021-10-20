@@ -6,11 +6,12 @@ name = "pypi"
 [packages]
 paho-mqtt = "*"
 "ruamel.yaml" = "*"
-pylint = "*"
 coloredlogs = "*"
 
 [dev-packages]
+pylint = "*"
 pytest = "*"
+pytest-cov = "*"
 
 [requires]
 python_version = "3.9"
