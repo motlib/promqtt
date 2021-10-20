@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from ..prom import (
+from ..promexp import (
     PrometheusExporter, PrometheusExporterException, UnknownMeasurementException)
 
 

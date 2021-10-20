@@ -1,6 +1,5 @@
 '''Application main implementation'''
 
-import argparse
 import json
 import logging
 import os
@@ -11,8 +10,6 @@ import coloredlogs
 from ruamel.yaml import YAML
 
 from .__version__ import __title__, __version__
-from .cfgdesc import cfg_desc
-from .configer import prepare_argparser, eval_cfg
 from .httpsrv import HttpServer, Route
 from .promexp import PrometheusExporter
 from .promqtt import MqttPrometheusBridge
@@ -29,17 +26,6 @@ def sigterm_handler(signum, stack_frame):
 
     logger.info('Terminating promqtt. Bye!')
     sys.exit(0)
-
-
-def parse_args():
-    '''Set up the command-line parser and parse arguments.'''
-
-    parser = argparse.ArgumentParser(
-        description="Tasmota MQTT to Prometheus exporter.")
-
-    prepare_argparser(cfg_desc, parser)
-
-    return parser.parse_args()
 
 
 def export_build_info(promexp, version):
@@ -60,11 +46,9 @@ def export_build_info(promexp, version):
 def setup_logging(verbose):
     '''Configure the logging.'''
 
-    coloredlogs.install(level=logging.DEBUG if verbose else logging.INFO)
-
-    logging.basicConfig(
+    coloredlogs.install(
         level=logging.DEBUG if verbose else logging.INFO,
-        format='%(asctime)s %(levelname)s (%(threadName)s:%(name)s) %(message)s')
+        fmt='%(asctime)s %(levelname)s (%(threadName)s:%(name)s) %(message)s')
 
     logger.info(f'Starting {__title__} {__version__}')
 
@@ -96,9 +80,6 @@ def main():
     # Set up handler to terminate if we receive SIGTERM, e.g. when the user
     # presses Ctrl-C.
     signal.signal(signal.SIGTERM, sigterm_handler)
-
-    args = parse_args()
-
 
     # load configuration
 

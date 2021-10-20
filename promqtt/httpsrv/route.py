@@ -1,11 +1,9 @@
 '''Implementation of the HTTP server to serve prometheus data.'''
 
-import logging
-
-
-
-
 class Route():
+    '''Represents a route, i.e. a URL path and the corresponding function to
+    generate the web server response.'''
+
     def __init__(self, path, content_type, handler):
         self._path = path
         self._content_type = content_type
