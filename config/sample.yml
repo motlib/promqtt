@@ -2,7 +2,7 @@
 
 # Configuration related to the MQTT broker
 mqtt:
-  broker: localhost
+  broker: mqtt
   port: 1883
 
 
