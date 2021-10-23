@@ -7,4 +7,4 @@ RUN pip install -r /tmp/requirements.txt
 RUN mkdir /promqtt
 COPY . /promqtt
 
-CMD ["python", "-u", "/promqtt/promqtt.py"]
+ENTRYPOINT ["python", "-u", "/promqtt/promqtt.py"]
