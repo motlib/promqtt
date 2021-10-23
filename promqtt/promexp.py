@@ -100,7 +100,7 @@ class PrometheusExporter():
         for meas in self._prom.values():
             timeout = meas['timeout']
 
-            if timeout is None:
+            if (timeout is None) or (timeout == 0):
                 continue
 
             data = meas['data']
@@ -114,7 +114,7 @@ class PrometheusExporter():
             # second loop to remove them
             for item_name in to_delete:
                 del data[item_name]
-                logger.debug("Removed timed out item '{item_name}'.")
+                logger.debug(f"Removed timed out item '{item_name}'.")
 
             to_delete.clear()
 
