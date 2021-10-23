@@ -12,12 +12,22 @@ http:
   port: 8086
 
 
-# Available metrics
+# Available metrics that can be published to Prometheus
 metrics:
+
+  # Name of the metric
   promqtt_pressure:
+
+    # Metric type according to prometheus, e.g. gauge or counter
     type: gauge
+
+    # Help text in prometheus output
     help: Air pressure in millibar
+
+    # If present not 0, a metric is removed from the prometheus output, if it
+    # has not been updated for this many seconds.
     timeout: 120
+
   promqtt_humidity:
     type: gauge
     help: Relative humidity in percent
@@ -43,15 +53,26 @@ metrics:
     help: Battery state in percent
     timeout: 120
 
-    
+# Types of devices to handle
 types:
+
+  # Arbitrary name of a device
   aqara_node:
+
+    # Metric to publish
     promqtt_rssi:
+
+      # How to extract the value from the message received from MQTT. This is a
+      # Python format string.
       value: "{msg.data[linkquality]}"
+
+      # Labels to add to the metric
       labels: { 'node': '{msg.topic_list[1]}', 'sensor': 'aqara' }
+
     promqtt_battery:
       value: "{msg.data[battery]}"
       labels: { 'node': '{msg.topic_list[1]}', 'sensor': 'aqara' }
+
     promqtt_vcc:
       measurement: "promqtt_vcc"
       value: "{msg.data[voltage]}"
@@ -59,8 +80,10 @@ types:
       offset: 0
       labels: { 'node': '{msg.topic_list[1]}', 'sensor': 'aqara' }
 
-  # zigbee2mqtt/aqara_sens_1 {"temperature":25.99,"linkquality":86,
-  # "humidity":45.86,"pressure":999,"battery":91,"voltage":2985}
+  # Example message:
+  # Topic: zigbee2mqtt/aqara_sens_1
+  # Message payload: {"temperature":25.99,"linkquality":86,"humidity":45.86,
+  #  "pressure":999,"battery":91,"voltage":2985}
   aqara_sensor:
     promqtt_temperature:
       value: "{msg.data[temperature]}"
@@ -74,13 +97,20 @@ types:
       value: "{msg.data[humidity]}"
       labels: { 'node': '{msg.topic_list[1]}', 'sensor': 'aqara' }
 
-
+# List of MQTT messages to process
 messages:
-  
-  - topics: ["re:zigbee2mqtt/aqara_(sw_01|sens_tph_01)"]
+  - # The topics to handle. If the topic is prefixed with `re`, the value is
+    # handled as a regular expression. Otherwise it must be exactly match the
+    # topic of a received message.
+    topics: ["re:zigbee2mqtt/aqara_(sw_01|sens_tph_01)"]
+
+    # How to parse the message contents. Currently only `json` is supported.
     parser: "json"
+
+    # Which types to use to convert data from the MQTT message into prometheus
+    # metrics.
     types: ['aqara_node']
-    
-#  - topics: ["zigbee2mqtt/aqara_sens_tph_01"]
-#    types: ['aqara_node', 'aqara_sensor']
-#    parser: "json"
+
+  - topics: ["zigbee2mqtt/aqara_sens_tph_01"]
+    parser: "json"
+    types: ['aqara_node', 'aqara_sensor']
