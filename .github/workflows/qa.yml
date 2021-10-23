@@ -1,10 +1,17 @@
-name: Run QA tasks in Docker
+name: Run quality assurance tasks
 
-on: [push]
+# We run on all branches and also for pull-requests
+on:
+  push: {}
+  pull_request:
+    branches:
+      - master
+      - develop
 
 jobs:
 
-  build:
+  qa_checks:
+
     runs-on: ubuntu-latest
 
     steps:
