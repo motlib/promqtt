@@ -1,7 +1,11 @@
 # Makefile to run development tools
 
 .PHONY: all
-all: pylint pytest
+all: qa
+
+
+.PHONY: qa
+qa: pylint pytest
 
 
 .PHONY: pylint
