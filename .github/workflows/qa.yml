@@ -1,0 +1,17 @@
+name: Run QA tasks in Docker
+
+on: [push]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build the QA Docker image
+      run: ./scripts/build_qa.sh
+
+    - name: Run QA scripts
+      run: ./scripts/qa.sh make qa

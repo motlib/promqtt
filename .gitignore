@@ -1,2 +1,5 @@
-.venv
-.pytest_cache
+/.venv
+/.pytest_cache
+/.coverage
+__pycache__
+/build

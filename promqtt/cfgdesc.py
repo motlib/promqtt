@@ -1,4 +1,4 @@
-
+'''Configuration descriptor'''
 
 cfg_desc = {
     'http.interface': {

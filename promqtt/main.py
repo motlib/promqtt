@@ -1,106 +1,115 @@
-import argparse
+'''Application main implementation'''
+
 import json
 import logging
 import os
 import signal
 import sys
 
+import coloredlogs
 from ruamel.yaml import YAML
 
-from promqtt.__version__ import __title__, __version__
-from promqtt.cfgdesc import cfg_desc
-from promqtt.configer import prepare_argparser, eval_cfg
-from promqtt.http import HttpServer
-from promqtt.prom import PrometheusExporter
-from promqtt.tasmota import TasmotaMQTTClient
+from .__version__ import __title__, __version__
+from .httpsrv import HttpServer, Route
+from .promexp import PrometheusExporter
+from .promqtt import MqttPrometheusBridge
+from .utils import StructWrapper
+
+logger = logging.getLogger(__name__)
 
 
 def sigterm_handler(signum, stack_frame):
     '''Handle the SIGTERM signal by shutting down.'''
-    
-    logging.info('Terminating promqtt. Bye!')
-    os._exit(0)
-    
 
-def parse_args():
-    '''Set up the command-line parser and parse arguments.'''
-    
-    parser = argparse.ArgumentParser(
-        description="Tasmota MQTT to Prometheus exporter.")
-    
-    prepare_argparser(cfg_desc, parser)
+    del signum
+    del stack_frame
 
-    return parser.parse_args()
+    logger.info('Terminating promqtt. Bye!')
+    sys.exit(0)
 
 
-def export_build_info(pe, title, version):
+def export_build_info(promexp, version):
     '''Export build information for prometheus.'''
-    
-    pe.register(
+
+    promexp.register(
         name='tasmota_build_info',
         datatype='gauge',
         helpstr='Version info',
         timeout=None)
 
-    pe.set(
+    promexp.set(
         name='tasmota_build_info',
         value='1',
         labels={'version': version})
 
-    
+
 def setup_logging(verbose):
     '''Configure the logging.'''
-    
-    logging.basicConfig(
+
+    coloredlogs.install(
         level=logging.DEBUG if verbose else logging.INFO,
-        format='[%(levelname)s] (%(threadName)s) %(message)s')
-    
-    logging.info('Starting {0} {1}'.format(
-        __title__,
-        __version__))    
-    
-    
+        fmt='%(asctime)s %(levelname)s (%(threadName)s:%(name)s) %(message)s')
+
+    logger.info(f'Starting {__title__} {__version__}')
+
+    if verbose:
+        logger.debug('Enabled verbose output.')
+
+
+def load_config(filename):
+    '''Load the configuration file.'''
+
+    logger.info(f"Loading config file '{filename}'.")
+
+    yaml = YAML(typ='safe')
+    with open(filename, mode='r', encoding='utf-8') as fhdl:
+        cfg = yaml.load(fhdl)
+
+    return StructWrapper(cfg)
+
+
 def main():
+    '''Application main function'''
+
+    # Set up logging
+
+    verbose = bool(os.environ.get('PROMQTT_VERBOSE', ''))
+    setup_logging(verbose)
+
+
+    # Set up handler to terminate if we receive SIGTERM, e.g. when the user
+    # presses Ctrl-C.
     signal.signal(signal.SIGTERM, sigterm_handler)
 
-    args = parse_args()
-    
-    # currently we do not load a config file
-    filecfg = {}
-    cfg = eval_cfg(cfg_desc, filecfg, os.environ, args)
-    setup_logging(cfg['verbose'])
+    # load configuration
 
+    cfgfile = os.environ.get('PROMQTT_CONFIG', 'promqtt.yml')
+    cfg = load_config(cfgfile)
 
-    # load device configuration
-    yaml = YAML(typ='safe')
-    with open(cfg['cfgfile']) as f:
-        devcfg = yaml.load(f)
-        
+    promexp = PrometheusExporter()
+    export_build_info(promexp, __version__)
 
-    pe = PrometheusExporter()
-    export_build_info(pe, __title__, __version__)
+    # Intialize and start the HTTP server
 
-    routes = {
-        '/metrics': {
-            'type': 'text/plain',
-            'fct': pe.render
-        },
-        '/cfg_json': {
-            'type': 'application/json',
-            'fct': lambda: json.dumps(cfg, indent=4)
-        },
-        '/devcfg_json': {
-            'type': 'application/json',
-            'fct': lambda: json.dumps(devcfg, indent=4)
-        },
-    }
-    
-    httpsrv = HttpServer(http_cfg=cfg['http'], routes=routes)
+    routes = [
+        Route('/metrics', 'text/plain', promexp.render),
+        Route('/cfg', 'application/json', lambda: json.dumps(cfg.raw, indent=4)),
+    ]
+
+    httpsrv = HttpServer(
+        netif=cfg.http_interface,
+        port=cfg.http_port,
+        routes=routes)
     httpsrv.start_server_thread()
 
-    tmc = TasmotaMQTTClient(pe, mqtt_cfg=cfg['mqtt'], cfg=devcfg)
+
+    tmc = MqttPrometheusBridge(
+        promexp,
+        mqtt_broker=cfg.mqtt_broker,
+        mqtt_port=cfg.mqtt_port,
+        cfg=cfg.raw)
     tmc.loop_forever()
 
-    
+
 if __name__ == '__main__':
     main()
