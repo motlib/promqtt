@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
+import promqtt.promexp
 from ..promexp import (
     PrometheusExporter, PrometheusExporterException, UnknownMeasurementException)
 
@@ -74,6 +75,10 @@ def test_promqtt_set(promexp):
         value=12.3,
         labels={'foo': 'bar'})
 
+    print('*** Render Output  ***')
+    print(promexp.render())
+
+
     assert _has_line(promexp, '# HELP test_meas_1 yeah')
     assert _has_line(promexp, '# TYPE test_meas_1 gauge')
     assert _has_line(promexp, 'test_meas_1{foo="bar"} 12.3')
@@ -89,7 +94,7 @@ def test_promqtt_not_registered(promexp):
             labels={})
 
 
-def test_promqtt_timeout(promexp):
+def test_promqtt_timeout(monkeypatch, promexp):
     '''Check if timed out items are correctly removed.'''
 
     promexp.register(
@@ -109,8 +114,10 @@ def test_promqtt_timeout(promexp):
     def tm_13s():
         return dtm + timedelta(seconds=13)
 
-    promexp._get_time = tm_now # pylint: disable=protected-access
+    monkeypatch.setattr(promqtt.promexp, "_get_time", tm_now)
 
+    #promexp._get_time = tm_now # pylint: disable=protected-access
+    #promqtt.promexp._get_time = tm_now
     promexp.set(
         name='test_meas_1',
         value=12.3,
@@ -119,7 +126,9 @@ def test_promqtt_timeout(promexp):
     # make sure it is rendered to the output
     assert _has_line(promexp, 'test_meas_1{foo="bar"} 12.3')
 
-    promexp._get_time = tm_13s # pylint: disable=protected-access
+    #promexp._get_time = tm_13s # pylint: disable=protected-access
+    monkeypatch.setattr(promqtt.promexp, "_get_time", tm_13s)
+
 
     # make sure it is not rendered to the output anymore
     assert not _has_line(promexp, 'test_meas_1{foo="bar"} 12.3')

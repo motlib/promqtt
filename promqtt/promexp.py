@@ -17,6 +17,180 @@ class UnknownMeasurementException(PrometheusExporterException):
     yet.'''
 
 
+def _get_time():
+    '''Return the current time as a datetime object.
+
+    Wrapped in a function, so it can be stubbed for testing.'''
+
+    return datetime.now()
+
+
+def _get_label_string(labels):
+    '''Convert a dictionary of labels to a unique label string'''
+
+    labelstr = ','.join(
+        [f'{k}="{labels[k]}"' for k in sorted(labels.keys())]
+    )
+
+    return labelstr
+
+
+class Metric():
+    '''Represents a Prometheus metric, i.e. a metric name with its helptext and type
+    information.'''
+
+    def __init__(self, name, datatype, helpstr, timeout=None):
+        self._name = name
+        self._datatype = datatype
+        self._helpstr = helpstr
+        self._timeout = timeout
+        self._data = {}
+
+    @property
+    def name(self):
+        '''Return the metric name'''
+        return self._name
+
+    @property
+    def datatype(self):
+        '''Return the metric datatype (gauge, counter, ...)'''
+        return self._datatype
+
+    @property
+    def helptext(self):
+        '''Return the metric help text'''
+
+        return self._helpstr
+
+    @property
+    def timeout(self):
+        '''Return the timeout in seconds for this metric. Metric instances are removed
+        from the metric after the timeout is expired.'''
+
+        return self._timeout
+
+
+    def set(self, labels, value):
+        '''Set a value for a metric instance'''
+
+        labelstr = _get_label_string(labels)
+
+        # If we do not know this instance yet
+        if labelstr not in self._data:
+
+            # we do not add new metrics without assigned value
+            if value is None:
+                return
+
+            # we don't know this instance yet, so we create a new one
+            self._data[labelstr] = MetricInstance(
+                metric=self,
+                labels=labels,
+                value=value)
+
+        # we already know this instance
+        else:
+
+            # if the value is None, we remove it
+            if value is None:
+                del self._data[labelstr]
+            else:
+                # we know this instance, so we update its value
+                instance = self._data[labelstr]
+                instance.value = value
+
+
+    @property
+    def has_timeout(self):
+        '''Return true if this metric has an timeout assigned.'''
+
+        return (self.timeout is not None) and (self.timeout > 0)
+
+
+    def check_timeout(self):
+        '''Check all metric instances for timeout and remove the timed out instances.'''
+
+        # find all timed out metric instances
+        to_delete = [
+            labelstr
+            for labelstr, instance in self._data.items()
+            if instance.is_timed_out
+        ]
+
+        # remove the metric instances
+        for labelstr in to_delete:
+            del self._data[labelstr]
+
+
+    def render_iter(self):
+        '''Return an iterator returning separate lines in Prometheus format'''
+
+        yield f'# HELP {self.name} {self.helptext}'
+        yield f'# TYPE {self.name} {self.datatype}'
+
+        yield from (str(instance) for instance in self._data.values())
+
+
+    def render(self):
+        '''Render the metric to Prometheus format'''
+
+        return '\n'.join(self.render_iter())
+
+
+class MetricInstance():
+    '''Represents a single metric instance. Instances are identified by a unique
+    combination of labels and a value.'''
+
+    def __init__(self, metric, labels, value):
+        self._metric = metric
+        self._labels = labels
+        self._label_str = _get_label_string(labels)
+
+        self.value = value
+
+
+    @property
+    def value(self):
+        '''Return the value'''
+
+        return self._value
+
+
+    @value.setter
+    def value(self, value):
+        '''Set the value'''
+
+        self._value = value
+        self._timestamp = _get_time()
+
+    @property
+    def age(self):
+        '''Return the age of the metric value, i.e. when it was last set.'''
+
+        return (_get_time() - self._timestamp).total_seconds()
+
+
+    @property
+    def is_timed_out(self):
+        '''Return True if the metric timeout is expired'''
+
+        if not self._metric.has_timeout:
+            return False
+
+        return self.age >= self._metric.timeout
+
+
+    @property
+    def label_string(self):
+        '''Return the label string of this instance'''
+        return self._label_str
+
+
+    def __str__(self):
+        return f'{self._metric.name}{{{self.label_string}}} {self.value}'
+
+
+
 class PrometheusExporter():
     '''Manage all measurements and provide the htp interface for interfacing with
     Prometheus.'''
@@ -38,18 +212,20 @@ class PrometheusExporter():
           values which are updated longer ago than this value, are removed.'''
 
         with self._lock:
-            if name not in self._prom:
-                self._prom[name] = {
-                    'help': helpstr,
-                    'type': datatype,
-                    'data':{},
-                    'timeout': timeout}
-            else:
+            if name in self._prom:
                 raise PrometheusExporterException(
-                    'Measurement already registered')
+                    f"The metric '{name}' is already registered")
+
+            metric = Metric(
+                name=name,
+                datatype=datatype,
+                helpstr=helpstr,
+                timeout=timeout)
+
+            self._prom[name] = metric
 
 
-    def set(self, name, labels, value, fmt='{0}'):
+    def set(self, name, labels, value):
         '''Set a value for exporting.
 
         :param str name: The name of the value to set. This name must have been
@@ -59,64 +235,32 @@ class PrometheusExporter():
         :param fmt: The string format to use to convert value to a string.
           Default: '{0}'. '''
 
-        labelstr = ','.join(
-            [f'{k}="{labels[k]}"' for k in sorted(labels.keys())]
-        )
-
-        # Values for unknown measuresments cause raising an exception
+        # We raise an exception if we do not know the metric name, i.e. if it
+        # was not registered
         if name not in self._prom:
             raise UnknownMeasurementException(
                 f"Cannot set not registered measurement '{name}'.")
 
-        namestr = f'{name}{{{labelstr}}}'
+        with self._lock:
+            metric = self._prom[name]
+
+            metric.set(labels, value)
+
+        logger.debug(f'Set metric {metric}')
+
+
+    def check_timeout(self):
+        '''Remove all metric instances which have timed out'''
 
         with self._lock:
-            data = self._prom[name]['data']
+            for metric in self._prom.values():
+                metric.check_timeout()
 
-            if value is not None:
-                data[namestr] = {'value': fmt.format(value)}
-                data[namestr]['timestamp'] = self._get_time()
-            else:
-                # we remove the item when passing None as value
-                if namestr in data:
-                    del data[namestr]
+    def render_iter(self):
+        '''Return an iterator providing each line of Prometheus output.'''
 
-        logger.debug(f'Set prom value {namestr} = {value}')
-
-
-    def _get_time(self): # pylint: disable=no-self-use
-        '''Return the current time as a datetime object.
-
-        Wrapped in a function, so it can be stubbed for testing.'''
-
-        return datetime.now()
-
-
-    def _check_timeout(self):
-        '''Remove all data which has timed out (i.e. is not valid anymore).'''
-        to_delete = []
-
-        # loop over all measurements
-        for meas in self._prom.values():
-            timeout = meas['timeout']
-
-            if (timeout is None) or (timeout == 0):
-                continue
-
-            data = meas['data']
-            now = self._get_time()
-
-            # first loop to find timed out items
-            for item_name, item in data.items():
-                if (now - item['timestamp']).total_seconds() >= timeout:
-                    to_delete.append(item_name)
-
-            # second loop to remove them
-            for item_name in to_delete:
-                del data[item_name]
-                logger.debug(f"Removed timed out item '{item_name}'.")
-
-            to_delete.clear()
+        for metric in self._prom.values():
+            yield from metric.render_iter()
 
 
     def render(self):
@@ -126,26 +270,6 @@ class PrometheusExporter():
         :returns: String with output suitable for consumption by Prometheus over
           HTTP. '''
 
-        lines = []
+        self.check_timeout()
 
-        with self._lock:
-
-            self._check_timeout()
-
-            for key, val in self._prom.items():
-                # do not output items without values
-                if len(val['data']) == 0:
-                    continue
-
-                helptext = val['help']
-                lines.append(f'# HELP {key} {helptext}')
-
-                typename = val['type']
-                lines.append(f'# TYPE {key} {typename}')
-
-                data = val['data']
-                for i in data:
-                    value = data[i]['value']
-                    lines.append(f'{i} {value}')
-
-        return '\n'.join(lines)
+        return '\n'.join(self.render_iter())
