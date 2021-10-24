@@ -19,7 +19,6 @@ ENV PYTHONFAULTHANDLER=1 \
         PIPENV_NOSPIN=true \
         PIPENV_DOTENV_LOCATION=config/${ENV}.env
 
-
 # We store the application in /app
 RUN mkdir /app
 WORKDIR /app
@@ -33,8 +32,13 @@ COPY Pipfile.lock /app
 # date (--deploy). Install development dependencies if we build for `dev`
 # environment (--dev).
 RUN \
-        if [ "$ENV" == "dev" ]; then echo "Building for dev environment"; fi; \
-        pipenv install $(test "${ENV} == dev" && echo --dev) --deploy --ignore-pipfile
+        if [ "$ENV" == "dev" ]; then echo "Building for dev environment"; fi \
+        && apt-get update \
+        && apt-get install --yes python3-dev \
+        && pipenv install $(test "${ENV} == dev" && echo --dev) --deploy --ignore-pipfile \
+        && apt-get purge --yes python3-dev \
+        && apt-get --purge --yes autoremove \
+        && rm -rf /var/lib/apt/lists/*
 
 # Copy the whole application source over. We should have a `.gitignore` file in
 # the project to e.g. prevent the .git directory from coming over.
