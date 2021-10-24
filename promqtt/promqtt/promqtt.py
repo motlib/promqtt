@@ -69,6 +69,7 @@ class MqttPrometheusBridge():
             self._types[type_name] = [
                 Mapping(
                     promexp=self._prom_exp,
+                    type_name=type_name,
                     metric=metric,
                     value_exp=mapping_cfg['value'],
                     label_exps=mapping_cfg['labels'])
