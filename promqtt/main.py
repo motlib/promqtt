@@ -32,13 +32,13 @@ def export_build_info(promexp, version):
     '''Export build information for prometheus.'''
 
     promexp.register(
-        name='tasmota_build_info',
+        name='promqtt_build_info',
         datatype='gauge',
         helpstr='Version info',
         timeout=None)
 
     promexp.set(
-        name='tasmota_build_info',
+        name='promqtt_build_info',
         value='1',
         labels={'version': version})
 
