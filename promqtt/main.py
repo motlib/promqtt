@@ -105,9 +105,7 @@ def main():
 
     tmc = MqttPrometheusBridge(
         promexp,
-        mqtt_broker=cfg['mqtt/broker'],
-        mqtt_port=cfg['mqtt/port'],
-        cfg=cfg.raw)
+        cfg=cfg)
     tmc.loop_forever()
 
 
