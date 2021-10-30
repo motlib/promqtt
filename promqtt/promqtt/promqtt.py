@@ -55,7 +55,6 @@ class MqttPrometheusBridge():
                 timeout=meas.get('timeout', None))
 
 
-
     def _load_types(self, types_cfg):
         self._types = {}
 
