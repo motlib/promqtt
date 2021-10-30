@@ -5,16 +5,7 @@
 # latest version.
 #
 
-docker build \
-       --tag promqtt:dev \
-       --build-arg ENV=dev \
-       .
+export ENV=dev
 
-docker run \
-       --name promqtt \
-       --rm \
-       --env PROMQTT_VERBOSE=1 \
-       -it \
-       -v $(pwd):/app \
-       promqtt:dev \
-       $*
+$(dirname $0)/build.sh
+$(dirname $0)/run.sh $*
