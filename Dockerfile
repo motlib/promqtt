@@ -16,8 +16,7 @@ ENV PYTHONFAULTHANDLER=1 \
         PIP_DEFAULT_TIMEOUT=100 \
         PIPENV_HIDE_EMOJIS=true \
         PIPENV_COLORBLIND=true \
-        PIPENV_NOSPIN=true \
-        PIPENV_DOTENV_LOCATION=config/${ENV}.env
+        PIPENV_NOSPIN=true
 
 # We store the application in /app
 RUN mkdir /app
