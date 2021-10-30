@@ -97,16 +97,16 @@ def main():
     ]
 
     httpsrv = HttpServer(
-        netif=cfg.http_interface,
-        port=cfg.http_port,
+        netif=cfg['http/interface'],
+        port=cfg['http/port'],
         routes=routes)
     httpsrv.start_server_thread()
 
 
     tmc = MqttPrometheusBridge(
         promexp,
-        mqtt_broker=cfg.mqtt_broker,
-        mqtt_port=cfg.mqtt_port,
+        mqtt_broker=cfg['mqtt/broker'],
+        mqtt_port=cfg['mqtt/port'],
         cfg=cfg.raw)
     tmc.loop_forever()
 

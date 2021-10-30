@@ -21,44 +21,50 @@ def testdata():
 def test_structwrap_dict(testdata):
     '''Test access to dict element'''
 
-    assert testdata.a_b == '3'
+    assert testdata['a/b'] == '3'
 
 
 def test_structwrap_list(testdata):
     '''Test access to list element'''
 
-    assert testdata.d_1 == 2
+    assert testdata['d/1'] == 2
 
 
 def test_structwrap_in(testdata):
     '''Test usage of `in` operator.'''
 
-    assert 'a_b' in testdata
+    assert 'a/b' in testdata
 
 
 def test_structwrap_in_no_member(testdata):
     '''Test usage of `in` operator.'''
 
-    assert 'a_e' not in testdata
+    assert 'a/e' not in testdata
 
 
 def test_structwrap_in_no_index(testdata):
     '''Test usage of `in` operator.'''
 
-    assert 'd_4' not in testdata
+    assert 'd/4' not in testdata
 
 
 def test_structwrap_get(testdata):
     '''Test get function'''
 
-    assert testdata.get('a_b') == '3'
+    assert testdata.get('a/b') == '3'
+
+
+def test_structwrap_get_default(testdata):
+    '''Test get function'''
+
+    assert testdata.get('a/x', 42) == 42
 
 
 def test_structwrap_raise_keyerror(testdata):
     '''Test failed access to dict member'''
 
     with pytest.raises(KeyError) as kex:
-        _ = testdata.a_e
+        _ = testdata['a/e']
 
     assert "Member 'e' not found" in str(kex)
 
@@ -67,7 +73,7 @@ def test_structwrap_raise_indexerror(testdata):
     '''Test failed access to list element'''
 
     with pytest.raises(IndexError) as iex:
-        _ = testdata.d_3
+        _ = testdata['d/3']
 
     assert "Member '3' out of range" in str(iex)
 
@@ -87,4 +93,14 @@ def test_structwrap_member_access(testdata):
     sub = testdata.get_struct('a')
 
     assert isinstance(sub, StructWrapper)
-    assert sub.b == '3'
+    assert sub['b'] == '3'
+
+
+def test_structwrap_str(testdata):
+    '''Check that a structwrap instance can be converted to string'''
+
+    # just ensure we do not raise an exception
+    assert str(testdata) == (
+        "StructWrapper("
+        "{'a': {'b': '3'}, 'c': 4, 'd': [1, 2, 3], 'tuple': (1, 2, 3)}"
+        ")")

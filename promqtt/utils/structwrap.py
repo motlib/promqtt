@@ -1,20 +1,21 @@
 '''Wrapper for a dict/list structure to enable attribute based access.'''
 
 
-STRUCTWRAPPER_SEPATATOR = '_'
-
-
 class StructWrapper():
     '''Wrapper for a dict/list structure to enable attribute based access.'''
+
+    # Separator character to split path
+    SEP = '/'
+
 
     def __init__(self, data):
         self._data = data
 
 
-    def __getattr__(self, name):
+    def __getitem__(self, key):
         '''Get attribute by name'''
 
-        parts = name.split(STRUCTWRAPPER_SEPATATOR)
+        parts = key.split(StructWrapper.SEP)
 
         data = self._data
 
@@ -24,32 +25,37 @@ class StructWrapper():
                     data = data[part]
                 else:
                     raise KeyError( # pylint: disable=raise-missing-from
-                        f"Member '{part}' not found when accessing '{name}'.")
+                        f"Member '{part}' not found when accessing '{key}'.")
 
-            elif isinstance(data, list):
+            elif isinstance(data, (list, tuple)):
                 part = int(part)
                 try:
                     data = data[part]
                 except IndexError:
                     raise IndexError( # pylint: disable=raise-missing-from
-                        f"Member '{part}' out of range when accessing '{name}'.")
+                        f"Member '{part}' out of range when accessing '{key}'.")
             else:
-                raise Exception('Hmmm....')
+                raise Exception(
+                    f'Structure has as {data.__class__.__name__} member, '
+                    'which we cannot handle.')
 
         return data
 
 
-    def get(self, name):
+    def get(self, key, default=None):
         '''Access attribute by name.'''
 
-        return getattr(self, name)
+        if key not in self:
+            return default
+
+        return self[key]
 
 
     def __contains__(self, name):
         '''Check if attribute could be accessed.'''
 
         try:
-            getattr(self, name)
+            _ = self[name]
             return True
         except (KeyError, IndexError):
             return False
@@ -66,3 +72,7 @@ class StructWrapper():
         '''Return a substructure as an StructWrapper instance'''
 
         return StructWrapper(self.get(name))
+
+
+    def __str__(self):
+        return f'StructWrapper({self.raw})'
