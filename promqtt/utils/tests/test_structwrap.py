@@ -13,7 +13,8 @@ def testdata():
     return StructWrapper({
         'a': {'b': '3'},
         'c': 4,
-        'd': [1, 2, 3]
+        'd': [1, 2, 3],
+        'tuple': (1, 2, 3),
     })
 
 
@@ -33,6 +34,18 @@ def test_structwrap_in(testdata):
     '''Test usage of `in` operator.'''
 
     assert 'a_b' in testdata
+
+
+def test_structwrap_in_no_member(testdata):
+    '''Test usage of `in` operator.'''
+
+    assert 'a_e' not in testdata
+
+
+def test_structwrap_in_no_index(testdata):
+    '''Test usage of `in` operator.'''
+
+    assert 'd_4' not in testdata
 
 
 def test_structwrap_get(testdata):
@@ -57,3 +70,21 @@ def test_structwrap_raise_indexerror(testdata):
         _ = testdata.d_3
 
     assert "Member '3' out of range" in str(iex)
+
+
+def test_structwrap_get_raw():
+    '''Ensure that raw returns the underlying data structure'''
+
+    data = {'a': 3}
+    wrap = StructWrapper(data)
+
+    assert wrap.raw == data
+
+
+def test_structwrap_member_access(testdata):
+    '''Test getting a substructure'''
+
+    sub = testdata.get_struct('a')
+
+    assert isinstance(sub, StructWrapper)
+    assert sub.b == '3'

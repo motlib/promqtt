@@ -1,4 +1,4 @@
-'''Unittests for prom'''
+'''Unittests for promexp module'''
 
 from datetime import datetime, timedelta
 
@@ -84,6 +84,51 @@ def test_promqtt_set(promexp):
     assert _has_line(promexp, 'test_meas_1{foo="bar"} 12.3')
 
 
+def test_promqtt_unset(promexp):
+    '''Setting a value of a registered metric to None removes it.'''
+
+    promexp.register(
+        name='test_meas_1',
+        datatype='gauge',
+        helpstr='yeah',
+        timeout=12)
+
+    # Set to metric values with different labels
+    promexp.set(
+        name='test_meas_1',
+        value=12.3,
+        labels={'foo': 'bar'})
+
+    promexp.set(
+        name='test_meas_1',
+        value=12.3,
+        labels={'foo': 'foo'})
+
+    promexp.set(
+        name='test_meas_1',
+        value=None,
+        labels={'foo': 'bar'})
+
+    assert not _has_line(promexp, 'test_meas_1{foo="bar"}')
+
+
+def test_promqtt_unset_new(promexp):
+    '''Setting a value of a registered metric that was never set has no effect.'''
+
+    promexp.register(
+        name='test_meas_1',
+        datatype='gauge',
+        helpstr='yeah',
+        timeout=12)
+
+    promexp.set(
+        name='test_meas_1',
+        value=None,
+        labels={'foo': 'bar'})
+
+    assert not _has_line(promexp, 'test_meas_1{foo="bar"}')
+
+
 def test_promqtt_not_registered(promexp):
     '''Setting a value to a not registered measurement raises an exception.'''
 
@@ -103,6 +148,11 @@ def test_promqtt_timeout(monkeypatch, promexp):
         helpstr='yeah',
         timeout=12)
 
+    promexp.register(
+        name='test_meas_2',
+        datatype='gauge',
+        helpstr='yeah',
+        timeout=0)
 
     # create dummy functions returning the current time or time 13s in the
     # future to fake timeout.
