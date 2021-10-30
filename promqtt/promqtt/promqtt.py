@@ -17,7 +17,7 @@ class MqttPrometheusBridge():
     '''Client for receiving messages from MQTT and parsing them and publishing
     them for prometheus.'''
 
-    def __init__(self, prom_exp, mqtt_broker, mqtt_port, cfg):
+    def __init__(self, prom_exp, cfg):
         self._prom_exp = prom_exp
 
         self._register_measurements(cfg['metrics'])
@@ -25,23 +25,22 @@ class MqttPrometheusBridge():
         self._load_msg_handlers(cfg['messages'])
 
         logger.info(
-            f'Connecting to MQTT broker at {mqtt_broker}:{mqtt_port}.')
+            "Connecting to MQTT broker at "
+            f"{cfg['mqtt/broker']}:{cfg['mqtt/port']}.")
 
         self._mqttc = mqtt.Client()
 
         # register callback for received messages
         self._mqttc.on_message = self.on_mqtt_msg
 
-        self._mqttc.connect(host=mqtt_broker, port=mqtt_port)
-
+        self._mqttc.connect(
+            host=cfg['mqtt/broker'],
+            port=cfg['mqtt/port'])
         logger.info('Connection to MQTT broker established.')
 
-        # Currently we subscribe to everything and later filter out the messages
-        # we are interested in.
-        sub_topic = '#'
-        self._mqttc.subscribe(sub_topic)
-
-        logger.debug(f"MQTT client subscribing to '{sub_topic}'.")
+        topic = cfg.get('mqtt/topic', default='#')
+        self._mqttc.subscribe(topic)
+        logger.debug(f"Subscribed to '{topic}'.")
 
 
     def _register_measurements(self, metric_cfg):
