@@ -137,6 +137,10 @@ class Metric():
         return '\n'.join(self.render_iter())
 
 
+    def __str__(self):
+        return self._name
+
+
 class MetricInstance():
     '''Represents a single metric instance. Instances are identified by a unique
     combination of labels and a value.'''
@@ -162,6 +166,9 @@ class MetricInstance():
 
         self._value = value
         self._timestamp = _get_time()
+
+        logger.debug(f'Set metric instance {self}')
+
 
     @property
     def age(self):
@@ -245,8 +252,6 @@ class PrometheusExporter():
             metric = self._prom[name]
 
             metric.set(labels, value)
-
-        logger.debug(f'Set metric {metric}')
 
 
     def check_timeout(self):
