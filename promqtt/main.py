@@ -13,7 +13,7 @@ from .__version__ import __title__, __version__
 from .httpsrv import HttpServer, Route
 from .promexp import PrometheusExporter
 from .promqtt import MqttPrometheusBridge
-from .utils import StructWrapper
+from .utils import StructWrapper, str_to_bool
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ def main():
 
     # Set up logging
 
-    verbose = bool(os.environ.get('PROMQTT_VERBOSE', ''))
+    verbose = str_to_bool(os.environ.get('PROMQTT_VERBOSE', ''))
     setup_logging(verbose)
 
 
