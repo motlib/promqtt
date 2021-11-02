@@ -2,7 +2,7 @@
 
 # Configuration related to the MQTT broker
 mqtt:
-  broker: mqtt
+  broker: npi2
   port: 1883
 
 
@@ -28,6 +28,8 @@ metrics:
     # has not been updated for this many seconds.
     timeout: 120
 
+    with_update_counter: True
+
   promqtt_humidity:
     type: gauge
     help: Relative humidity in percent
@@ -52,6 +54,7 @@ metrics:
     type: gauge
     help: Battery state in percent
     timeout: 120
+    with_update_counter: True
 
 # Types of devices to handle
 types:
