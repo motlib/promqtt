@@ -48,11 +48,13 @@ class MqttPrometheusBridge():
 
         for name, meas in metric_cfg.items():
             logger.debug(f"Registering measurement '{name}'")
+
             self._prom_exp.register(
                 name=name,
                 datatype=meas['type'],
                 helpstr=meas['help'],
-                timeout=meas.get('timeout', None))
+                timeout=meas.get('timeout', None),
+                with_update_counter=meas.get('with_update_counter', False))
 
 
     def _load_types(self, types_cfg):

@@ -39,17 +39,20 @@ class Metric():
     '''Represents a Prometheus metric, i.e. a metric name with its helptext and type
     information.'''
 
-    def __init__(self, name, datatype, helpstr, timeout=None):
+    def __init__(self, name, datatype, helpstr, timeout=None, with_update_counter=False): # pylint: disable=too-many-arguments
         self._name = name
         self._datatype = datatype
         self._helpstr = helpstr
         self._timeout = timeout
         self._data = {}
+        self._with_update_counter = with_update_counter
+
 
     @property
     def name(self):
         '''Return the metric name'''
         return self._name
+
 
     @property
     def datatype(self):
@@ -68,6 +71,13 @@ class Metric():
         from the metric after the timeout is expired.'''
 
         return self._timeout
+
+
+    @property
+    def with_update_counter(self):
+        '''Returns true if this metric has an associated update counter metric.'''
+
+        return self._with_update_counter
 
 
     def set(self, labels, value):
@@ -98,6 +108,33 @@ class Metric():
                 # we know this instance, so we update its value
                 instance = self._data[labelstr]
                 instance.value = value
+
+
+    def get(self, labels):
+        '''Return the last stored value of a metric instance. Returns None if
+        the instance does not exist.'''
+
+        labelstr = _get_label_string(labels)
+
+        # If we do not know this instance yet
+        if labelstr not in self._data:
+            return None
+
+        inst = self._data[labelstr]
+        return inst.value
+
+
+    def inc(self, labels):
+        '''Increases the value of the metric instance by one. '''
+
+        val = self.get(labels)
+
+        if val is None:
+            val = 0
+
+        val += 1
+
+        self.set(labels, val)
 
 
     @property
@@ -207,7 +244,7 @@ class PrometheusExporter():
         self._lock = Lock()
 
 
-    def register(self, name, datatype, helpstr, timeout=None):
+    def register(self, name, datatype, helpstr, timeout=None, with_update_counter=False): # pylint: disable=too-many-arguments
         '''Register a name for exporting. This must be called before calling
         `set()`.
 
@@ -227,9 +264,17 @@ class PrometheusExporter():
                 name=name,
                 datatype=datatype,
                 helpstr=helpstr,
-                timeout=timeout)
+                timeout=timeout,
+                with_update_counter=with_update_counter)
 
             self._prom[name] = metric
+
+        if with_update_counter:
+            self.register(
+                name=f'{name}_updates',
+                datatype='counter',
+                helpstr=f'Number of updates to {name}',
+                timeout=None)
 
 
     def set(self, name, labels, value):
@@ -253,6 +298,9 @@ class PrometheusExporter():
 
             metric.set(labels, value)
 
+            if metric.with_update_counter:
+                counter = self._prom[f'{name}_updates']
+                counter.inc(labels)
 
     def check_timeout(self):
         '''Remove all metric instances which have timed out'''
