@@ -44,7 +44,7 @@ class MqttPrometheusBridge():
 
 
     def _register_measurements(self, metric_cfg):
-        '''Register measurements for prometheus.'''
+        '''Register measurements for Prometheus.'''
 
         for name, meas in metric_cfg.items():
             logger.debug(f"Registering measurement '{name}'")
@@ -58,6 +58,8 @@ class MqttPrometheusBridge():
 
 
     def _load_types(self, types_cfg):
+        '''Load the device types from configuration.'''
+
         self._types = {}
 
         # loop over types
@@ -78,6 +80,13 @@ class MqttPrometheusBridge():
 
 
     def _load_msg_handlers(self, msg_cfg):
+        '''Load the message handlers from configuration.
+
+        The message handlers receive messages from one or more topics and
+        process the data according to the configured device types.
+
+        '''
+
         self._handlers = []
 
         for handler_cfg in msg_cfg:
