@@ -24,21 +24,25 @@ class MqttPrometheusBridge():
         self._load_types(cfg['types'])
         self._load_msg_handlers(cfg['messages'])
 
-        logger.info(
-            "Connecting to MQTT broker at "
-            f"{cfg['mqtt/broker']}:{cfg['mqtt/port']}.")
+        self._setup_mqtt_client(
+            broker=cfg['mqtt/broker'],
+            port=cfg['mqtt/port'],
+            topic=cfg.get('mqtt/topic', default='#'))
+
+
+    def _setup_mqtt_client(self, broker, port, topic):
+        '''Configure MQTT client and establish connection'''
+
+        logger.info(f"Connecting to MQTT broker at {broker}:{port}.")
 
         self._mqttc = mqtt.Client()
 
         # register callback for received messages
         self._mqttc.on_message = self.on_mqtt_msg
 
-        self._mqttc.connect(
-            host=cfg['mqtt/broker'],
-            port=cfg['mqtt/port'])
+        self._mqttc.connect(host=broker, port=port)
         logger.info('Connection to MQTT broker established.')
 
-        topic = cfg.get('mqtt/topic', default='#')
         self._mqttc.subscribe(topic)
         logger.debug(f"Subscribed to '{topic}'.")
 
@@ -116,7 +120,8 @@ class MqttPrometheusBridge():
 
 
     def on_mqtt_msg(self, client, obj, msg):
-        '''Handle incoming MQTT message.'''
+        '''Callback function called by the MQTT client to Handle incoming MQTT
+        messages.'''
 
         del client
         del obj
