@@ -13,9 +13,14 @@ from .__version__ import __title__, __version__
 from .httpsrv import HttpServer, Route
 from .promexp import PrometheusExporter
 from .promqtt import MqttPrometheusBridge
-from .utils import StructWrapper, str_to_bool
+from .utils import StructWrapper, str_to_bool, AbstractConfig
+
 
 logger = logging.getLogger(__name__)
+
+
+class AppConfig(AbstractConfig): # pylint: disable=too-few-public-methods
+    '''Application configuration'''
 
 
 def sigterm_handler(signum, stack_frame):
@@ -72,7 +77,6 @@ def main():
     '''Application main function'''
 
     # Set up logging
-
     verbose = str_to_bool(os.environ.get('PROMQTT_VERBOSE', ''))
     setup_logging(verbose)
 
@@ -81,31 +85,39 @@ def main():
     # presses Ctrl-C.
     signal.signal(signal.SIGTERM, sigterm_handler)
 
-    # load configuration
 
+    # load configuration
     cfgfile = os.environ.get('PROMQTT_CONFIG', 'promqtt.yml')
+    AppConfig.cfg_filename = cfgfile
+
     cfg = load_config(cfgfile)
 
     promexp = PrometheusExporter()
     export_build_info(promexp, __version__)
 
-    # Intialize and start the HTTP server
 
+    # Intialize and start the HTTP server
     routes = [
-        Route('/metrics', 'text/plain', promexp.render),
-        Route('/cfg', 'application/json', lambda: json.dumps(cfg.raw, indent=4)),
+        Route(
+            '/metrics',
+            'text/plain',
+            promexp.render),
+        Route(
+            '/cfg',
+            'application/json',
+            lambda: json.dumps(AppConfig.raw, indent=4)),
     ]
 
     httpsrv = HttpServer(
-        netif=cfg['http/interface'],
-        port=cfg['http/port'],
+        netif=AppConfig.http.interface,
+        port=AppConfig.http.port,
         routes=routes)
     httpsrv.start_server_thread()
 
 
     tmc = MqttPrometheusBridge(
         promexp,
-        cfg=cfg)
+        cfg=AppConfig.raw)
     tmc.loop_forever()
 
 
