@@ -19,32 +19,49 @@ class MqttPrometheusBridge():
 
     def __init__(self, prom_exp, cfg):
         self._prom_exp = prom_exp
+        self._cfg = cfg
 
         self._register_measurements(cfg['metrics'])
         self._load_types(cfg['types'])
         self._load_msg_handlers(cfg['messages'])
 
-        self._setup_mqtt_client(
-            broker=cfg['mqtt/broker'],
-            port=cfg['mqtt/port'],
-            topic=cfg.get('mqtt/topic', default='#'))
+        self._setup_mqtt_client()
 
 
-    def _setup_mqtt_client(self, broker, port, topic):
+    @property
+    def broker(self):
+        '''Return the broker hostname'''
+
+        return self._cfg['mqtt/broker']
+
+
+    @property
+    def port(self):
+        '''Return the broker TCP port'''
+        return self._cfg['mqtt/port']
+
+
+    @property
+    def topic(self):
+        '''Return the main topic to subscribe to.'''
+        return self._cfg['mqtt/topic']
+
+
+    def _setup_mqtt_client(self):
         '''Configure MQTT client and establish connection'''
 
-        logger.info(f"Connecting to MQTT broker at {broker}:{port}.")
+        logger.info(f"Connecting to MQTT broker at {self.broker}:{self.port}.")
 
         self._mqttc = mqtt.Client()
 
-        # register callback for received messages
-        self._mqttc.on_message = self.on_mqtt_msg
+        # register callbacks
+        self._mqttc.on_message = self._on_message
+        self._mqttc.on_connect = self._on_connect
+        self._mqttc.on_disconnect = self._on_disconnect
 
-        self._mqttc.connect(host=broker, port=port)
-        logger.info('Connection to MQTT broker established.')
-
-        self._mqttc.subscribe(topic)
-        logger.debug(f"Subscribed to '{topic}'.")
+        self._mqttc.connect(host=self.broker, port=self.port)
+        logger.info(
+            f'Connection to MQTT broker {self.broker}:{self.port} established.')
 
 
     def _register_measurements(self, metric_cfg):
@@ -119,8 +136,8 @@ class MqttPrometheusBridge():
         self._mqttc.loop_forever()
 
 
-    def on_mqtt_msg(self, client, obj, msg):
-        '''Callback function called by the MQTT client to Handle incoming MQTT
+    def _on_message(self, client, obj, msg):
+        '''Callback function called by the MQTT client to handle incoming MQTT
         messages.'''
 
         del client
@@ -135,3 +152,33 @@ class MqttPrometheusBridge():
 
         except Exception: # pylint: disable=broad-except
             logger.exception('Failed to handle MQTT message')
+
+
+    def _on_connect(self, client, userdata, flags, result):
+        '''Callback function called by the MQTT client to inform about establishing a
+        connection to a broker.'''
+
+        del client
+        del userdata
+        del flags
+
+        logger.info(
+            f"Connected to {self.broker}:{self.port} "
+            f"with result {result} ({mqtt.error_string(result)})")
+
+        # Subscribing in on_connect() means that if we lose the connection and
+        # reconnect then subscriptions will be renewed.
+        self._mqttc.subscribe(self.topic)
+        logger.debug(f"Subscribed to '{self.topic}'.")
+
+
+    def _on_disconnect(self, client, userdata, result):
+        '''Callback function called by the MQTT client when the connection to a broker
+        is terminated.'''
+
+        del client
+        del userdata
+
+        logger.info(
+            f"Disconnected from {self.broker}:{self.port} "
+            f"with result {result} ({mqtt.error_string(result)})")
