@@ -17,6 +17,10 @@ class MqttPrometheusBridge():
     '''Client for receiving messages from MQTT and parsing them and publishing
     them for prometheus.'''
 
+    # Name of MQTT connection state metric
+    MQTT_CONN_STATE_METRIC = 'promqtt_mqtt_conn_state'
+
+
     def __init__(self, prom_exp, cfg):
         self._prom_exp = prom_exp
         self._cfg = cfg
@@ -24,6 +28,12 @@ class MqttPrometheusBridge():
         self._register_measurements(cfg['metrics'])
         self._load_types(cfg['types'])
         self._load_msg_handlers(cfg['messages'])
+
+        # register metric for MQTT connection state
+        self._prom_exp.register(
+            name=MqttPrometheusBridge.MQTT_CONN_STATE_METRIC,
+            datatype='gauge',
+            helpstr='Connection state of the connection to the MQTT broker')
 
         self._setup_mqtt_client()
 
@@ -171,6 +181,11 @@ class MqttPrometheusBridge():
         self._mqttc.subscribe(self.topic)
         logger.debug(f"Subscribed to '{self.topic}'.")
 
+        self._prom_exp.set(
+            name=MqttPrometheusBridge.MQTT_CONN_STATE_METRIC,
+            labels={'broker': self.broker, 'port': self.port},
+            value=1)
+
 
     def _on_disconnect(self, client, userdata, result):
         '''Callback function called by the MQTT client when the connection to a broker
@@ -182,3 +197,8 @@ class MqttPrometheusBridge():
         logger.info(
             f"Disconnected from {self.broker}:{self.port} "
             f"with result {result} ({mqtt.error_string(result)})")
+
+        self._prom_exp.set(
+            name=MqttPrometheusBridge.MQTT_CONN_STATE_METRIC,
+            labels={'broker': self.broker, 'port': self.port},
+            value=0)
