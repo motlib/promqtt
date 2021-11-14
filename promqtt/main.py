@@ -7,13 +7,12 @@ import signal
 import sys
 
 import coloredlogs
-from ruamel.yaml import YAML
 
 from .__version__ import __title__, __version__
 from .httpsrv import HttpServer, Route
 from .promexp import PrometheusExporter
 from .promqtt import MqttPrometheusBridge
-from .utils import StructWrapper, str_to_bool, AbstractConfig
+from .utils import str_to_bool, AbstractConfig
 
 
 logger = logging.getLogger(__name__)
@@ -61,18 +60,6 @@ def setup_logging(verbose):
         logger.debug('Enabled verbose output.')
 
 
-def load_config(filename):
-    '''Load the configuration file.'''
-
-    logger.info(f"Loading config file '{filename}'.")
-
-    yaml = YAML(typ='safe')
-    with open(filename, mode='r', encoding='utf-8') as fhdl:
-        cfg = yaml.load(fhdl)
-
-    return StructWrapper(cfg)
-
-
 def main():
     '''Application main function'''
 
@@ -89,8 +76,6 @@ def main():
     # load configuration
     cfgfile = os.environ.get('PROMQTT_CONFIG', 'promqtt.yml')
     AppConfig.cfg_filename = cfgfile
-
-    cfg = load_config(cfgfile)
 
     promexp = PrometheusExporter()
     export_build_info(promexp, __version__)
