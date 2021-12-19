@@ -4,7 +4,7 @@ import logging
 import os
 
 from ruamel.yaml import YAML
-
+from jsonschema import validate, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +62,24 @@ class ConfigMetaClass(type):
         '''Load the yaml configuration file'''
 
         yaml = YAML(typ='safe')
+
         with open(cls.cfg_filename, mode='r', encoding='utf-8') as fhdl:
-            cls._cfg = Wrapper(cls, yaml.load(fhdl))
+            cfgdata = yaml.load(fhdl)
+
+        if cls.cfg_schema:
+            with open(cls.cfg_schema, mode='r', encoding='utf-8') as fhdl:
+                schema = yaml.load(fhdl)
+
+            try:
+                validate(
+                    instance=cfgdata,
+                    schema=schema)
+            except ValidationError as ve:
+                path = '/'.join(ve.path)
+                logger.error(
+                    f"Element '{path}': {ve.message}")
+
+        cls._cfg = Wrapper(cls, cfgdata)
 
         cls._loaded_filename = cls.cfg_filename
         cls._loaded_filedate = os.path.getmtime(cls.cfg_filename)
@@ -123,3 +139,6 @@ class AbstractConfig(metaclass=ConfigMetaClass): # pylint: disable=too-few-publi
 
     # Default value for the filename
     cfg_filename = None
+
+    # Schema file
+    cfg_schema = None

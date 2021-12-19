@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 class AppConfig(AbstractConfig): # pylint: disable=too-few-public-methods
     '''Application configuration'''
 
+    cfg_schema = 'schema.yml'
+
 
 def sigterm_handler(signum, stack_frame):
     '''Handle the SIGTERM signal by shutting down.'''

@@ -1,0 +1,24 @@
+# Configuration related to the MQTT broker
+#mqtt:
+#  broker: npi2
+#  port: 1883
+
+$schema: "http://json-schema.org/draft-04/schema#"
+type: object
+properties:
+  mqtt:
+    type: object
+    description: MQTT broker specification
+    properties:
+      broker:
+        description: Hostname of the broker
+        type: string
+      port:
+        description: TCP port of the broker
+        type: integer
+    required:
+      - broker
+      - port
+    additionalProperties: false
+required:
+  - mqtt
