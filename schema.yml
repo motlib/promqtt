@@ -1,24 +1,107 @@
-# Configuration related to the MQTT broker
-#mqtt:
-#  broker: npi2
-#  port: 1883
+# JSON schema to describe a valid promqtt configuration file
 
 $schema: "http://json-schema.org/draft-04/schema#"
+
 type: object
 properties:
   mqtt:
     type: object
-    description: MQTT broker specification
+    description: 'MQTT broker specification'
     properties:
       broker:
-        description: Hostname of the broker
+        description: 'Hostname of the broker'
         type: string
       port:
-        description: TCP port of the broker
+        description: 'TCP port of the broker'
         type: integer
     required:
       - broker
       - port
     additionalProperties: false
+
+  http:
+    description: 'Configuration of the HTTP server'
+    type: object
+    properties:
+      interface:
+        description: 'The http server listens on this interface'
+        type: string
+      port:
+        description: 'Port of the HTTP server'
+        type: integer
+    required: [interface, port]
+    additionalProperties: false
+
+  metrics:
+    description: 'Declaration of the metrics to publish'
+    type: object
+    additionalProperties:
+      type: object
+      properties:
+        type:
+          description: 'Metric type, either `counter` or `gauge`.'
+          type: string
+          enum: [gauge, counter]
+        help:
+          description: 'Help string to publish with the metric.'
+          type: string
+        timeout:
+          type: integer
+          description: >
+            If set to a non-zero value, the metric is removed from the output
+            if it is not update in time.
+        with_update_counter:
+          description: >
+            If set to true, an additional metric is published, which tells, how
+            often this metric has been updated.
+          
+          type: boolean
+      required: [type, help]
+
+  types:
+    type: object
+    additionalProperties:
+      type: object
+      additionalProperties:
+        properties:
+          value:
+            type: string
+          labels:
+            type: object
+        required: [value, labels]
+        #additionalProperties: false
+        
+  messages:
+    description: 'The list of messages to process'
+    type: array
+    items:
+      type: object
+      properties:
+        topics:
+          description: The list of MQTT topics to receive.
+          type: array
+          items:
+            description: A single MQTT topic to receive.
+            type: string
+        parser:
+          description: >
+            The parser component used to interpret the message content.
+          type: string
+          enum: [json]
+        types:
+          description: >
+            The names of the types (handlers) used to interpret the message
+            content and extract metric data.
+          type: array
+          items:
+            description: 'A type (handler) name'
+            type: string
+            
 required:
   - mqtt
+  - http
+  - metrics
+  - types
+  - messages
+  
+additionalProperties: false
