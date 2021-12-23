@@ -75,7 +75,7 @@ class ConfigMetaClass(type):
                     instance=cfgdata,
                     schema=schema)
             except ValidationError as ve:
-                path = '/'.join(ve.path)
+                path = '/'.join((str(e) for e in ve.path))
                 logger.error(
                     f"Element '{path}': {ve.message}")
 
