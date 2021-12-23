@@ -8,7 +8,7 @@ import paho.mqtt.client as mqtt
 from .msg import Message
 from .msghdlr import MessageHandler
 from .mapping import Mapping
-
+from ..appcfg import AppConfig
 
 logger = logging.getLogger(__name__)
 
@@ -21,13 +21,15 @@ class MqttPrometheusBridge():
     MQTT_CONN_STATE_METRIC = 'promqtt_mqtt_conn_state'
 
 
-    def __init__(self, prom_exp, cfg):
+    def __init__(self, prom_exp):
         self._prom_exp = prom_exp
-        self._cfg = cfg
 
-        self._register_measurements(cfg['metrics'])
-        self._load_types(cfg['types'])
-        self._load_msg_handlers(cfg['messages'])
+
+
+        #self._register_measurements(cfg['metrics'])
+        self._register_measurements(AppConfig.metrics.raw)
+        self._load_types(AppConfig.types.raw)
+        self._load_msg_handlers(AppConfig.messages.raw)
 
         # register metric for MQTT connection state
         self._prom_exp.register(
@@ -42,19 +44,21 @@ class MqttPrometheusBridge():
     def broker(self):
         '''Return the broker hostname'''
 
-        return self._cfg['mqtt/broker']
+        return AppConfig.mqtt.broker
 
 
     @property
     def port(self):
         '''Return the broker TCP port'''
-        return self._cfg['mqtt/port']
+
+        return AppConfig.mqtt.port
 
 
     @property
     def topic(self):
         '''Return the main topic to subscribe to.'''
-        return self._cfg['mqtt/topic']
+
+        return AppConfig.mqtt.topic
 
 
     def _setup_mqtt_client(self):

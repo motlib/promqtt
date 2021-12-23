@@ -13,15 +13,9 @@ from .httpsrv import HttpServer, Route
 from .promexp import PrometheusExporter
 from .promqtt import MqttPrometheusBridge
 from .utils import str_to_bool, AbstractConfig
-
+from .appcfg import AppConfig
 
 logger = logging.getLogger(__name__)
-
-
-class AppConfig(AbstractConfig): # pylint: disable=too-few-public-methods
-    '''Application configuration'''
-
-    cfg_schema = 'schema.yml'
 
 
 def sigterm_handler(signum, stack_frame):
@@ -102,9 +96,7 @@ def main():
     httpsrv.start_server_thread()
 
 
-    tmc = MqttPrometheusBridge(
-        promexp,
-        cfg=AppConfig.raw)
+    tmc = MqttPrometheusBridge(promexp)
     tmc.loop_forever()
 
 
