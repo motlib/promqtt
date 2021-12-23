@@ -14,9 +14,13 @@ properties:
       port:
         description: 'TCP port of the broker'
         type: integer
+      topic:
+        description: 'MQTT root topic to subscribe to'
+        type: string
     required:
       - broker
       - port
+      - topic
     additionalProperties: false
 
   http:
@@ -54,7 +58,7 @@ properties:
           description: >
             If set to true, an additional metric is published, which tells, how
             often this metric has been updated.
-          
+
           type: boolean
       required: [type, help]
 
@@ -70,7 +74,7 @@ properties:
             type: object
         required: [value, labels]
         #additionalProperties: false
-        
+
   messages:
     description: 'The list of messages to process'
     type: array
@@ -96,12 +100,12 @@ properties:
           items:
             description: 'A type (handler) name'
             type: string
-            
+
 required:
   - mqtt
   - http
   - metrics
   - types
   - messages
-  
+
 additionalProperties: false
