@@ -164,10 +164,8 @@ def test_promqtt_timeout(monkeypatch, promexp):
     def tm_13s():
         return dtm + timedelta(seconds=13)
 
-    monkeypatch.setattr(promqtt.promexp, "_get_time", tm_now)
+    monkeypatch.setattr(promqtt.promexp.metricinst, "_get_time", tm_now)
 
-    #promexp._get_time = tm_now # pylint: disable=protected-access
-    #promqtt.promexp._get_time = tm_now
     promexp.set(
         name='test_meas_1',
         value=12.3,
@@ -177,7 +175,7 @@ def test_promqtt_timeout(monkeypatch, promexp):
     assert _has_line(promexp, 'test_meas_1{foo="bar"} 12.3')
 
     #promexp._get_time = tm_13s # pylint: disable=protected-access
-    monkeypatch.setattr(promqtt.promexp, "_get_time", tm_13s)
+    monkeypatch.setattr(promqtt.promexp.metricinst, "_get_time", tm_13s)
 
 
     # make sure it is not rendered to the output anymore
