@@ -1,4 +1,4 @@
-FROM python:3.7
+FROM python:3.10
 
 # We later need to use `test` command, which is not well supported in sh, so we
 # change to bash.
