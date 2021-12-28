@@ -14,7 +14,7 @@ class Metric():
         self._datatype = datatype
         self._helpstr = helpstr
         self._timeout = timeout
-        self._data = {}
+        self._instances = {}
         self._with_update_counter = with_update_counter
 
 
@@ -56,14 +56,14 @@ class Metric():
         labelstr = _get_label_string(labels)
 
         # If we do not know this instance yet
-        if labelstr not in self._data:
+        if labelstr not in self._instances:
 
             # we do not add new metrics without assigned value
             if value is None:
                 return
 
             # we don't know this instance yet, so we create a new one
-            self._data[labelstr] = MetricInstance(
+            self._instances[labelstr] = MetricInstance(
                 metric=self,
                 labels=labels,
                 value=value)
@@ -73,10 +73,10 @@ class Metric():
 
             # if the value is None, we remove it
             if value is None:
-                del self._data[labelstr]
+                del self._instances[labelstr]
             else:
                 # we know this instance, so we update its value
-                instance = self._data[labelstr]
+                instance = self._instances[labelstr]
                 instance.value = value
 
 
@@ -87,10 +87,10 @@ class Metric():
         labelstr = _get_label_string(labels)
 
         # If we do not know this instance yet
-        if labelstr not in self._data:
+        if labelstr not in self._instances:
             return None
 
-        inst = self._data[labelstr]
+        inst = self._instances[labelstr]
         return inst.value
 
 
@@ -120,13 +120,13 @@ class Metric():
         # find all timed out metric instances
         to_delete = [
             labelstr
-            for labelstr, instance in self._data.items()
+            for labelstr, instance in self._instances.items()
             if instance.is_timed_out
         ]
 
         # remove the metric instances
         for labelstr in to_delete:
-            del self._data[labelstr]
+            del self._instances[labelstr]
 
 
     def render_iter(self):
@@ -135,7 +135,7 @@ class Metric():
         yield f'# HELP {self.name} {self.helptext}'
         yield f'# TYPE {self.name} {self.datatype}'
 
-        yield from (str(instance) for instance in self._data.values())
+        yield from (str(instance) for instance in self._instances.values())
 
 
     def render(self):

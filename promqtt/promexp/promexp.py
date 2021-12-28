@@ -23,7 +23,7 @@ class PrometheusExporter():
     Prometheus.'''
 
     def __init__(self):
-        self._prom = {}
+        self._metrics = {}
         self._lock = Lock()
 
 
@@ -39,7 +39,7 @@ class PrometheusExporter():
           values which are updated longer ago than this value, are removed.'''
 
         with self._lock:
-            if name in self._prom:
+            if name in self._metrics:
                 raise PrometheusExporterException(
                     f"The metric '{name}' is already registered")
 
@@ -50,7 +50,7 @@ class PrometheusExporter():
                 timeout=timeout,
                 with_update_counter=with_update_counter)
 
-            self._prom[name] = metric
+            self._metrics[name] = metric
 
         if with_update_counter:
             self.register(
@@ -72,30 +72,30 @@ class PrometheusExporter():
 
         # We raise an exception if we do not know the metric name, i.e. if it
         # was not registered
-        if name not in self._prom:
+        if name not in self._metrics:
             raise UnknownMeasurementException(
                 f"Cannot set not registered measurement '{name}'.")
 
         with self._lock:
-            metric = self._prom[name]
+            metric = self._metrics[name]
 
             metric.set(labels, value)
 
             if metric.with_update_counter:
-                counter = self._prom[f'{name}_updates']
+                counter = self._metrics[f'{name}_updates']
                 counter.inc(labels)
 
     def check_timeout(self):
         '''Remove all metric instances which have timed out'''
 
         with self._lock:
-            for metric in self._prom.values():
+            for metric in self._metrics.values():
                 metric.check_timeout()
 
     def render_iter(self):
         '''Return an iterator providing each line of Prometheus output.'''
 
-        for metric in self._prom.values():
+        for metric in self._metrics.values():
             yield from metric.render_iter()
 
 
