@@ -71,6 +71,9 @@ def test_promqtt_set(promexp):
         helpstr='yeah',
         timeout=12)
 
+    assert not _has_line(promexp, '# HELP test_meas_1 yeah')
+    assert not _has_line(promexp, '# TYPE test_meas_1 gauge')
+
     promexp.set(
         name='test_meas_1',
         value=12.3,

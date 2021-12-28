@@ -86,16 +86,18 @@ class PrometheusExporter():
                 counter.inc(labels)
 
 
-    def check_timeout(self):
+    def cleanup(self):
         '''Remove all metric instances which have timed out'''
 
         with self._lock:
             for metric in self._metrics.values():
-                metric.check_timeout()
+                metric.cleanup()
 
 
     def render_iter(self):
         '''Return an iterator providing each line of Prometheus output.'''
+
+        self.cleanup()
 
         for metric in self._metrics.values():
             yield from metric.render_iter()
@@ -107,7 +109,5 @@ class PrometheusExporter():
 
         :returns: String with output suitable for consumption by Prometheus over
           HTTP. '''
-
-        self.check_timeout()
 
         return '\n'.join(self.render_iter())

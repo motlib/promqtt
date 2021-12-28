@@ -114,14 +114,14 @@ class Metric():
         return (self.timeout is not None) and (self.timeout > 0)
 
 
-    def check_timeout(self):
-        '''Check all metric instances for timeout and remove the timed out instances.'''
+    def cleanup(self):
+        '''Discard all metric instances which either timed out or have a None value.'''
 
         # find all timed out metric instances
         to_delete = [
             labelstr
             for labelstr, instance in self._instances.items()
-            if instance.is_timed_out
+            if instance.is_timed_out or (instance.value is None)
         ]
 
         # remove the metric instances
@@ -131,6 +131,9 @@ class Metric():
 
     def render_iter(self):
         '''Return an iterator returning separate lines in Prometheus format'''
+
+        if not len(self._instances):
+            return
 
         yield f'# HELP {self.name} {self.helptext}'
         yield f'# TYPE {self.name} {self.datatype}'
