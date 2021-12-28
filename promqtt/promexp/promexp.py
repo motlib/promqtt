@@ -74,7 +74,7 @@ class PrometheusExporter():
         # was not registered
         if name not in self._metrics:
             raise UnknownMeasurementException(
-                f"Cannot set not registered measurement '{name}'.")
+                f"Metric '{name}' was is not registered.")
 
         with self._lock:
             metric = self._metrics[name]
@@ -85,12 +85,14 @@ class PrometheusExporter():
                 counter = self._metrics[f'{name}_updates']
                 counter.inc(labels)
 
+
     def check_timeout(self):
         '''Remove all metric instances which have timed out'''
 
         with self._lock:
             for metric in self._metrics.values():
                 metric.check_timeout()
+
 
     def render_iter(self):
         '''Return an iterator providing each line of Prometheus output.'''
