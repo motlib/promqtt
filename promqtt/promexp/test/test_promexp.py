@@ -30,6 +30,7 @@ def promexp():
 
 def test_promqtt_register(promexp):
     '''Register measurement and check that it's not yet in the output.'''
+
     promexp.register(
         name='test_meas_1',
         datatype='gauge',
@@ -39,9 +40,9 @@ def test_promqtt_register(promexp):
     out = promexp.render().split('\n')
 
     # we did not set a value, so no measurement shall be visible
-    hasline = any(map(lambda l: l.startswith('test_meas_1'), out))
+    hasvalue = any(map(lambda l: l.startswith('test_meas_1'), out))
 
-    assert not hasline
+    assert not hasvalue
 
 
 def test_promqtt_register_twice(promexp):
@@ -75,10 +76,6 @@ def test_promqtt_set(promexp):
         value=12.3,
         labels={'foo': 'bar'})
 
-    print('*** Render Output  ***')
-    print(promexp.render())
-
-
     assert _has_line(promexp, '# HELP test_meas_1 yeah')
     assert _has_line(promexp, '# TYPE test_meas_1 gauge')
     assert _has_line(promexp, 'test_meas_1{foo="bar"} 12.3')
@@ -99,10 +96,7 @@ def test_promqtt_unset(promexp):
         value=12.3,
         labels={'foo': 'bar'})
 
-    promexp.set(
-        name='test_meas_1',
-        value=12.3,
-        labels={'foo': 'foo'})
+    assert not _has_line(promexp, 'test_meas_1{foo="bar"}')
 
     promexp.set(
         name='test_meas_1',
@@ -113,7 +107,8 @@ def test_promqtt_unset(promexp):
 
 
 def test_promqtt_unset_new(promexp):
-    '''Setting a value of a registered metric that was never set has no effect.'''
+    '''Setting None value of a registered metric that was never set has no
+    effect.'''
 
     promexp.register(
         name='test_meas_1',
