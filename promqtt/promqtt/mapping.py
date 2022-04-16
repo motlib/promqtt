@@ -24,18 +24,25 @@ class Mapping():
     def handle_msg_data(self, msg):
         '''Handle a message received from MQTT'''
 
+        eglobals = {}
+        elocals = {
+            'msg': msg,
+            'data': msg.data,
+            'tlist': msg.topic_list,
+        }
+
         # calculate value
 
         try:
-            value = self._value_exp.format(
-                msg=msg)
+            # pylint: disable=eval-used
+            value = eval(self._value_exp, eglobals, elocals)
         except Exception as ex: # pylint: disable=broad-except
             # We only print a debug log, as we want the message handling to be
             # fault tolerant. Message contents sometimes change over time and
             # not every member is available all the time. To issues are to be
             # expected
-            logger.debug(
-                f"{self}: Cannot apply value expression '{self._value_exp}' "
+            logger.warning(
+                f"{self}: Cannot evaluate value expression '{self._value_exp}' "
                 f"for message {msg}: {ex}")
             return
 
@@ -45,12 +52,10 @@ class Mapping():
         labels = {}
         label_fault = False
 
-        for name_exp, value_exp in self._label_exps.items():
+        for label_name, value_exp in self._label_exps.items():
             try:
-                label_name = name_exp.format(msg=msg)
-                label_value = value_exp.format(msg=msg)
-
-                labels[label_name] = label_value
+                # pylint: disable=eval-used
+                labels[label_name] = eval(value_exp, eglobals, elocals)
             except Exception as ex: # pylint: disable=broad-except
 
                 # We only print a debug log, as we want the message handling to
@@ -58,7 +63,7 @@ class Mapping():
                 # and not every member is available all the time. To issues are
                 # to be expected
                 logger.debug(
-                    f"{self}: Cannot apply label expression '{self._value_exp}' "
+                    f"{self}: Cannot evaluate label expression '{self._value_exp}' "
                     f"for message {msg}: {ex}")
 
                 label_fault = True
