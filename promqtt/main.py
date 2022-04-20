@@ -12,7 +12,7 @@ from ruamel.yaml import YAML
 from .__version__ import __title__, __version__
 from .httpsrv import HttpServer, Route
 from .promexp import PrometheusExporter
-from .promqtt import MqttPrometheusBridge
+from .promqtt import MqttPrometheusBridge, MqttClient
 from .utils import StructWrapper, str_to_bool
 
 logger = logging.getLogger(__name__)
@@ -103,10 +103,13 @@ def main():
     httpsrv.start_server_thread()
 
 
+
     tmc = MqttPrometheusBridge(
         promexp,
         cfg=cfg)
-    tmc.loop_forever()
+
+    mqttclient = MqttClient(promexp, cfg, tmc)
+    mqttclient.loop_forever()
 
 
 if __name__ == '__main__':

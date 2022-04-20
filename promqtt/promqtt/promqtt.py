@@ -3,9 +3,6 @@ for prometheus.'''
 
 import logging
 
-import paho.mqtt.client as mqtt
-
-from .msg import Message
 from .msghdlr import MessageHandler
 from .mapping import Mapping
 
@@ -13,7 +10,7 @@ from .mapping import Mapping
 logger = logging.getLogger(__name__)
 
 
-class MqttPrometheusBridge():
+class MqttPrometheusBridge(): # pylint: disable=too-few-public-methods
     '''Client for receiving messages from MQTT and parsing them and publishing
     them for prometheus.'''
 
@@ -28,50 +25,6 @@ class MqttPrometheusBridge():
         self._register_measurements(cfg['metrics'])
         self._load_types(cfg['types'])
         self._load_msg_handlers(cfg['messages'])
-
-        # register metric for MQTT connection state
-        self._prom_exp.register(
-            name=MqttPrometheusBridge.MQTT_CONN_STATE_METRIC,
-            datatype='gauge',
-            helpstr='Connection state of the connection to the MQTT broker')
-
-        self._setup_mqtt_client()
-
-
-    @property
-    def broker(self):
-        '''Return the broker hostname'''
-
-        return self._cfg['mqtt/broker']
-
-
-    @property
-    def port(self):
-        '''Return the broker TCP port'''
-        return self._cfg['mqtt/port']
-
-
-    @property
-    def topic(self):
-        '''Return the main topic to subscribe to.'''
-        return self._cfg['mqtt/topic']
-
-
-    def _setup_mqtt_client(self):
-        '''Configure MQTT client and establish connection'''
-
-        logger.info(f"Connecting to MQTT broker at {self.broker}:{self.port}.")
-
-        self._mqttc = mqtt.Client()
-
-        # register callbacks
-        self._mqttc.on_message = self._on_message
-        self._mqttc.on_connect = self._on_connect
-        self._mqttc.on_disconnect = self._on_disconnect
-
-        self._mqttc.connect(host=self.broker, port=self.port)
-        logger.info(
-            f'Connection to MQTT broker {self.broker}:{self.port} established.')
 
 
     def _register_measurements(self, metric_cfg):
@@ -140,65 +93,13 @@ class MqttPrometheusBridge():
                 f"({', '.join(type_names)})")
 
 
-    def loop_forever(self):
-        '''Run infinite loop to receive messages from MQTT broker'''
-
-        self._mqttc.loop_forever()
-
-
-    def _on_message(self, client, obj, msg):
+    def handle_mqtt_message(self, msg):
         '''Callback function called by the MQTT client to handle incoming MQTT
         messages.'''
 
-        del client
-        del obj
-
         try:
-            msg = Message(msg.topic, msg.payload)
-            logger.debug(f"Received message: {msg}")
-
             for msg_handler in self._handlers:
                 msg_handler.handle(msg)
 
         except Exception: # pylint: disable=broad-except
             logger.exception('Failed to handle MQTT message')
-
-
-    def _on_connect(self, client, userdata, flags, result):
-        '''Callback function called by the MQTT client to inform about establishing a
-        connection to a broker.'''
-
-        del client
-        del userdata
-        del flags
-
-        logger.info(
-            f"Connected to {self.broker}:{self.port} "
-            f"with result {result} ({mqtt.error_string(result)})")
-
-        # Subscribing in on_connect() means that if we lose the connection and
-        # reconnect then subscriptions will be renewed.
-        self._mqttc.subscribe(self.topic)
-        logger.debug(f"Subscribed to '{self.topic}'.")
-
-        self._prom_exp.set(
-            name=MqttPrometheusBridge.MQTT_CONN_STATE_METRIC,
-            labels={'broker': self.broker, 'port': self.port},
-            value=1)
-
-
-    def _on_disconnect(self, client, userdata, result):
-        '''Callback function called by the MQTT client when the connection to a broker
-        is terminated.'''
-
-        del client
-        del userdata
-
-        logger.info(
-            f"Disconnected from {self.broker}:{self.port} "
-            f"with result {result} ({mqtt.error_string(result)})")
-
-        self._prom_exp.set(
-            name=MqttPrometheusBridge.MQTT_CONN_STATE_METRIC,
-            labels={'broker': self.broker, 'port': self.port},
-            value=0)
