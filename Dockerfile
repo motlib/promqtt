@@ -34,7 +34,7 @@ RUN \
         if [ "$ENV" == "dev" ]; then echo "Building for dev environment"; fi \
         && apt-get update \
         && apt-get install --yes python3-dev \
-        && pipenv install $(test "${ENV} == dev" && echo --dev) --deploy --ignore-pipfile \
+        && pipenv sync $(test "${ENV} == dev" && echo --dev) --system \
         && apt-get purge --yes python3-dev \
         && apt-get --purge --yes autoremove \
         && rm -rf /var/lib/apt/lists/*

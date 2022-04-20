@@ -8,7 +8,7 @@ then
     MODULES="$*"
 fi
 
-pipenv run pylint \
-       --rcfile=./.pylintrc \
-       --output-format=colorized \
-       ${MODULES}
+pylint \
+    --rcfile=./.pylintrc \
+    --output-format=colorized \
+    ${MODULES}

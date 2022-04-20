@@ -20,5 +20,8 @@ jobs:
     - name: Build the QA Docker image
       run: ENV=qa ./scripts/build.sh
 
-    - name: Run QA scripts
-      run: ENV=qa ./scripts/run.sh make qa
+    - name: Run linter
+      run: ENV=qa ./scripts/run.sh ./scripts/pylint.sh
+
+    - name: Run unittests
+      run: ENV=qa ./scripts/run.sh ./scripts/pytest.sh
