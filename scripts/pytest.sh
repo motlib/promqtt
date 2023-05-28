@@ -10,12 +10,12 @@ fi
 
 mkdir -p build
 
-pytest \
-    -c pytest.ini \
-    --verbose \
-    --junit-xml=build/pytest.xml \
-    --cov \
-    --cov-report html:build/htmlcov \
-    --cov-config coveragerc \
-    --cov-branch \
-    ${MODULES}
+pipenv run pytest \
+       -c pytest.ini \
+       --verbose \
+       --junit-xml=build/pytest.xml \
+       --cov \
+       --cov-report html:build/htmlcov \
+       --cov-config coveragerc \
+       --cov-branch \
+       ${MODULES}

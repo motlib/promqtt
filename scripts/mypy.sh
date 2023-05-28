@@ -8,7 +8,5 @@ then
     MODULES="$*"
 fi
 
-DJANGO_SETTINGS_MODULE=topy.settings pipenv run pylint \
-       --rcfile=./.pylintrc \
-       --output-format=colorized \
+pipenv run mypy \
        ${MODULES}

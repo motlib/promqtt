@@ -3,3 +3,4 @@
 /.coverage
 __pycache__
 /build
+/.env

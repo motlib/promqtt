@@ -9,7 +9,7 @@ import sys
 import coloredlogs
 from ruamel.yaml import YAML
 
-from .__version__ import __title__, __version__
+from .metadata import APPNAME, VERSION
 from .httpsrv import HttpServer, Route
 from .promexp import PrometheusExporter
 from .promqtt import MqttPrometheusBridge, MqttClient
@@ -50,7 +50,7 @@ def setup_logging(verbose):
         level=logging.DEBUG if verbose else logging.INFO,
         fmt='%(asctime)s %(levelname)s (%(threadName)s:%(name)s) %(message)s')
 
-    logger.info(f'Starting {__title__} {__version__}')
+    logger.info(f'Starting {APPNAME} {VERSION}')
 
     if verbose:
         logger.debug('Enabled verbose output.')
@@ -87,7 +87,7 @@ def main():
     cfg = load_config(cfgfile)
 
     promexp = PrometheusExporter()
-    export_build_info(promexp, __version__)
+    export_build_info(promexp, VERSION)
 
     # Intialize and start the HTTP server
 

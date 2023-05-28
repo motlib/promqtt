@@ -2,8 +2,9 @@
 
 # Configuration related to the MQTT broker
 mqtt:
-  broker: npi2
+  broker: npi3
   port: 1883
+  topic: '#'
 
 
 # Configuration of the HTTP server
@@ -32,27 +33,27 @@ metrics:
 
   promqtt_humidity:
     type: gauge
-    help: Relative humidity in percent
+    help: 'Relative humidity in percent'
     timeout: 120
   promqtt_temperature:
     type: gauge
-    help: Temperature in degree celsius
+    help: 'Temperature in degree celsius'
     timeout: 120
   promqtt_rssi:
     type: gauge
-    help: Relative wifi signal strength indicator
+    help: 'Relative signal strength indicator'
     timeout: 120
   promqtt_vcc:
     type: gauge
-    help: Node supply voltage in volt
+    help: 'Node supply voltage in volt'
     timeout: 120
   promqtt_power:
     type: gauge
-    help: Power state
+    help: 'Power state'
     timeout: 120
   promqtt_battery:
     type: gauge
-    help: Battery state in percent
+    help: 'Battery state in percent'
     timeout: 120
     with_update_counter: True
 
@@ -65,16 +66,20 @@ types:
     # Metric to publish
     promqtt_rssi:
 
-      # How to extract the value from the message received from MQTT. This is a
-      # Python format string.
-      value: "{msg.data[linkquality]}"
+      # How to extract the value from the message received from MQTT. This is
+      # a Python expression.
+      value: "data['linkquality']"
 
       # Labels to add to the metric
-      labels: { 'node': '{msg.topic_list[1]}', 'sensor': 'aqara' }
+      labels:
+        node: 'tlist[1]'
+        sensor: 'aqara'
 
     promqtt_battery:
-      value: "{msg.data[battery]}"
-      labels: { 'node': '{msg.topic_list[1]}', 'sensor': 'aqara' }
+      value: "data['battery']"
+      labels:
+        node: 'tlist[1]}'
+        sensor: 'aqara'
 
     promqtt_vcc:
       measurement: "promqtt_vcc"

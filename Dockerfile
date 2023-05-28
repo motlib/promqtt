@@ -1,8 +1,8 @@
-FROM python:3.10
+FROM python:3.11-alpine
 
-# We later need to use `test` command, which is not well supported in sh, so we
-# change to bash.
-SHELL ["/bin/bash", "-c"]
+# Create a group and user to run our app
+ARG APP_USER=appuser
+RUN addgroup -S ${APP_USER} && adduser -S ${APP_USER} -G ${APP_USER}
 
 # This is the target environment, either dev or prod
 ARG ENV
@@ -15,33 +15,31 @@ ENV PYTHONFAULTHANDLER=1 \
         PIP_DISABLE_PIP_VERSION_CHECK=1 \
         PIP_DEFAULT_TIMEOUT=100 \
         PIPENV_HIDE_EMOJIS=true \
-        PIPENV_COLORBLIND=true \
         PIPENV_NOSPIN=true
+
+#RUN set -ex \
+#        && RUN_DEPS="" \
+#        && apk add --no-cache $RUN_DEPS
 
 # We store the application in /app
 RUN mkdir /app
 WORKDIR /app
 
-RUN pip install pipenv
-
 COPY Pipfile /app
 COPY Pipfile.lock /app
 
-# Install virtual environment from Pipfile.lock. Fail if Pipfile.lock is out of
-# date (--deploy). Install development dependencies if we build for `dev`
-# environment (--dev).
-RUN \
-        if [ "$ENV" == "dev" ]; then echo "Building for dev environment"; fi \
-        && apt-get update \
-        && apt-get install --yes python3-dev \
-        && pipenv sync $(test "${ENV} == dev" && echo --dev) --system \
-        && apt-get purge --yes python3-dev \
-        && apt-get --purge --yes autoremove \
-        && rm -rf /var/lib/apt/lists/*
+RUN set -ex \
+        && BUILD_DEPS="" \
+        && apk add --no-cache --virtual .build-deps $BUILD_DEPS \
+        && pip install --upgrade pipenv \
+        \
+        && pipenv sync --system \
+        \
+        && apk del .build-deps
 
 # Copy the whole application source over. We should have a `.gitignore` file in
 # the project to e.g. prevent the .git directory from coming over.
 COPY . /app
 
 # Default command to run
-CMD ["pipenv", "run", "python", "-m", "promqtt"]
+CMD ["python", "-m", "promqtt"]

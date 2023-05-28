@@ -4,14 +4,17 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-paho-mqtt = "*"
 "ruamel.yaml" = "*"
 coloredlogs = "*"
+paho-mqtt = "*"
 
 [dev-packages]
+black = "*"
+isort = "*"
+mypy = "*"
 pylint = "*"
 pytest = "*"
 pytest-cov = "*"
 
 [requires]
-python_version = "3.9"
+python_version = "3.11"
