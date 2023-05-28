@@ -7,7 +7,7 @@ import signal
 import sys
 
 import coloredlogs
-from ruamel.yaml import YAML
+import yaml
 
 from .metadata import APPNAME, VERSION
 from .httpsrv import HttpServer, Route
@@ -61,9 +61,8 @@ def load_config(filename):
 
     logger.info(f"Loading config file '{filename}'.")
 
-    yaml = YAML(typ='safe')
     with open(filename, mode='r', encoding='utf-8') as fhdl:
-        cfg = yaml.load(fhdl)
+        cfg = yaml.safe_load(fhdl)
 
     return StructWrapper(cfg)
 

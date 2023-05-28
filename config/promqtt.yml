@@ -4,7 +4,7 @@
 mqtt:
   broker: npi3
   port: 1883
-  topic: '#'
+  topic: "#"
 
 
 # Configuration of the HTTP server
@@ -13,112 +13,209 @@ http:
   port: 8086
 
 
-# Available metrics that can be published to Prometheus
+# Available metrics
 metrics:
-
-  # Name of the metric
   promqtt_pressure:
-
-    # Metric type according to prometheus, e.g. gauge or counter
     type: gauge
-
-    # Help text in prometheus output
     help: Air pressure in millibar
-
-    # If present not 0, a metric is removed from the prometheus output, if it
-    # has not been updated for this many seconds.
-    timeout: 120
-
-    with_update_counter: True
-
+    timeout: 0
   promqtt_humidity:
     type: gauge
-    help: 'Relative humidity in percent'
-    timeout: 120
+    help: Relative humidity in percent
+    timeout: 0
   promqtt_temperature:
     type: gauge
-    help: 'Temperature in degree celsius'
-    timeout: 120
+    help: Temperature in degree celsius
+    timeout: 0
   promqtt_rssi:
     type: gauge
-    help: 'Relative signal strength indicator'
-    timeout: 120
+    help: Relative wifi signal strength indicator
+    timeout: 0
   promqtt_vcc:
     type: gauge
-    help: 'Node supply voltage in volt'
-    timeout: 120
-  promqtt_power:
-    type: gauge
-    help: 'Power state'
-    timeout: 120
+    help: Node supply voltage in volt
+    timeout: 0
   promqtt_battery:
     type: gauge
-    help: 'Battery state in percent'
-    timeout: 120
-    with_update_counter: True
+    help: Battery state in percent
+    timeout: 0
+  promqtt_power:
+    type: gauge
+    help: 'Power consumption [W]'
+    timeout: 180
+  promqtt_aparent_power:
+    type: gauge
+    help: 'Aparent power consumption [W]'
+    timeout: 180
+  promqtt_reactive_power:
+    type: gauge
+    help: 'Reactive power consumption [W]'
+    timeout: 180
+  promqtt_power_factor:
+    type: gauge
+    help: 'Power factor'
+    timeout: 180
+  promqtt_voltage:
+    type: gauge
+    help: 'Voltage [V]'
+    timeout: 180
+  promqtt_current:
+    type: gauge
+    help: 'Current [A]'
+  promqtt_energy:
+    type: counter
+    help: 'Energy [Ws]'
+  promqtt_uptime:
+    type: counter
+    help: 'Device uptime in [s]'
+  promqtt_tasmota_heap:
+    type: gauge
+    help: 'Tasmota heap metric'
+  promqtt_tasmota_sleep:
+    type: gauge
+    help: 'Tasmota sleep metric'
+  promqtt_tasmota_loadavg:
+    type: gauge
+    help: 'Tasmota loadavg metric'
 
-# Types of devices to handle
+
 types:
-
-  # Arbitrary name of a device
   aqara_node:
-
-    # Metric to publish
     promqtt_rssi:
-
-      # How to extract the value from the message received from MQTT. This is
-      # a Python expression.
       value: "data['linkquality']"
-
-      # Labels to add to the metric
       labels:
         node: 'tlist[1]'
-        sensor: 'aqara'
-
+        sensor: "'aqara'"
     promqtt_battery:
       value: "data['battery']"
       labels:
-        node: 'tlist[1]}'
-        sensor: 'aqara'
-
+        node: 'tlist[1]'
+        sensor: "'aqara'"
     promqtt_vcc:
-      measurement: "promqtt_vcc"
-      value: "{msg.data[voltage]}"
-      factor: 0.001
-      offset: 0
-      labels: { 'node': '{msg.topic_list[1]}', 'sensor': 'aqara' }
+      value: "0.001 * float(data['voltage'])"
+      labels:
+        node: 'tlist[1]'
+        sensor: "'aqara'"
 
-  # Example message:
-  # Topic: zigbee2mqtt/aqara_sens_1
-  # Message payload: {"temperature":25.99,"linkquality":86,"humidity":45.86,
-  #  "pressure":999,"battery":91,"voltage":2985}
+# zigbee2mqtt/aqara_sens_1 {"temperature":25.99,"linkquality":86,
+# "humidity":45.86,"pressure":999,"battery":91,"voltage":2985}
   aqara_sensor:
     promqtt_temperature:
-      value: "{msg.data[temperature]}"
-      labels: { 'node': '{msg.topic_list[1]}', 'sensor': 'aqara' }
+      value: "data['temperature']"
+      labels:
+        node: 'tlist[1]'
+        sensor: "'aqara'"
 
     promqtt_pressure:
-      value: "{msg.data[pressure]}"
-      labels: { 'node': '{msg.topic_list[1]}', 'sensor': 'aqara' }
+      value: "data['pressure']"
+      labels:
+        node: 'tlist[1]'
+        sensor: "'aqara'"
 
     promqtt_humidity:
-      value: "{msg.data[humidity]}"
-      labels: { 'node': '{msg.topic_list[1]}', 'sensor': 'aqara' }
+      value: "data['humidity']"
+      labels:
+        node: 'tlist[1]'
+        sensor: "'aqara'"
 
-# List of MQTT messages to process
+# tele/tasmota_9955BB/SENSOR {"Time":"2022-04-15T05:59:53",
+# "ENERGY":{"TotalStartTime":"2022-04-12T11:49:39","Total":1.346,
+# "Yesterday":0.565,"Today":0.087,"Period": 3,"Power":33,"ApparentPower":61,
+# "ReactivePower":52,"Factor":0.53,"Voltage":270,"Current":0.227}}
+  tasmota_socket_meter:
+    promqtt_power:
+      value: "data['ENERGY']['Power']"
+      labels:
+        node: 'tlist[1]'
+    promqtt_aparent_power:
+      value: "data['ENERGY']['ApparentPower']"
+      labels:
+        node: 'tlist[1]'
+    promqtt_reactive_power:
+      value: "data['ENERGY']['ReactivePower']"
+      labels:
+        node: 'tlist[1]'
+    promqtt_power_factor:
+      value: "data['ENERGY']['Factor']"
+      labels:
+        node: 'tlist[1]'
+    promqtt_voltage:
+      value: "data['ENERGY']['Voltage']"
+      labels:
+        node: 'tlist[1]'
+    promqtt_current:
+      value: "data['ENERGY']['Current']"
+      labels:
+        node: 'tlist[1]'
+    promqtt_energy:
+      value: "data['ENERGY']['Total']"
+      labels:
+        node: 'tlist[1]'
+
+# tele/tasmota_9909BE/STATE
+# {"Time":"2022-04-15T06:20:10","Uptime":"1T18:35:16",
+# "UptimeSec":153316,"Heap":26,"SleepMode":"Dynamic","Sleep":50,"LoadAvg":19,
+# "MqttCount":6,"POWER":"ON",
+# "Wifi":{"AP":1,"SSId":"yynet","BSSId":"DC:15:C8:CB:84:B7","Channel":1,
+# "Mode":"11n","RSSI":78,"Signal":-61,"LinkCount":5,"Downtime":"0T00:00:11"}}
+  tasmota_state:
+    promqtt_rssi:
+      value: "data['Wifi']['RSSI']"
+      labels:
+        node: 'tlist[1]'
+    promqtt_uptime:
+      value: "data['UptimeSec']"
+      labels:
+        node: 'tlist[1]'
+    promqtt_tasmota_heap:
+      value: "data['Heap']"
+      labels:
+        node: 'tlist[1]'
+    promqtt_tasmota_sleep:
+      value: "data['Sleep']"
+      labels:
+        node: 'tlist[1]'
+    promqtt_tasmota_loadavg:
+      value: "data['LoadAvg']"
+      labels:
+        node: 'tlist[1]'
+
+# tele/tasmota_8266E3/SENSOR {"Time":"2022-07-17T11:00:04","BME280":
+# {"Temperature":22.5,"Humidity":43.5,"DewPoint":9.4,"Pressure":1012.5},
+#"PressureUnit":"hPa","TempUnit":"C"}
+       
+  tasmota_bmp280:
+    promqtt_pressure:
+      value: "data['BME280']['Pressure']"
+      labels:
+        node: 'tlist[1]'
+    promqtt_humidity:
+      value: "data['BME280']['Humidity']"
+      labels:
+        node: 'tlist[1]'
+    promqtt_temperature:
+      value: "data['BME280']['Temperature']"
+      labels:
+        node: 'tlist[1]'
+        
+
 messages:
-  - # The topics to handle. If the topic is prefixed with `re`, the value is
-    # handled as a regular expression. Otherwise it must be exactly match the
-    # topic of a received message.
-    topics: ["re:zigbee2mqtt/aqara_(sw_01|sens_tph_01)"]
-
-    # How to parse the message contents. Currently only `json` is supported.
+  - topics: ["re:zigbee2mqtt/aqara_(sw_01|sens_tph_01)"]
     parser: "json"
-
-    # Which types to use to convert data from the MQTT message into prometheus
-    # metrics.
     types: ['aqara_node']
 
   - topics: ["zigbee2mqtt/aqara_sens_tph_01"]
+    types: ['aqara_sensor']
     parser: "json"
-    types: ['aqara_node', 'aqara_sensor']
+
+  - topics: ["re:tele/tasmota_(9909BE|9955BB)/SENSOR"]
+    types: ['tasmota_socket_meter']
+    parser: "json"
+
+  - topics: ["re:tele/tasmota_([A-Z0-9]+)/STATE"]
+    types: ['tasmota_state']
+    parser: "json"
+
+  - topics: ["tele/tasmota_8266E3/SENSOR"]
+    types: ['tasmota_bmp280']
+    parser: "json"
