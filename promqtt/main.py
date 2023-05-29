@@ -1,4 +1,4 @@
-'''Application main implementation'''
+"""Application main implementation"""
 
 import json
 import logging
@@ -6,60 +6,59 @@ import os
 import signal
 import sys
 from pathlib import Path
+
 import yaml
 
-from .metadata import APPNAME, VERSION
-from .httpsrv import HttpServer, Route
-from .promexp import PrometheusExporter
-from .promqtt import MqttPrometheusBridge, MqttClient
-from .utils import str_to_bool
 from .cfgmodel import PromqttConfig
-
+from .httpsrv import HttpServer, Route
+from .metadata import APPNAME, VERSION
+from .promexp import PrometheusExporter
+from .promqtt import MqttClient, MqttPrometheusBridge
+from .utils import str_to_bool
 
 logger = logging.getLogger(__name__)
 
 
 def sigterm_handler(signum: int, stack_frame) -> None:
-    '''Handle the SIGTERM signal by shutting down.'''
+    """Handle the SIGTERM signal by shutting down."""
 
     del signum
     del stack_frame
 
-    logger.info('Terminating promqtt. Bye!')
+    logger.info("Terminating promqtt. Bye!")
     sys.exit(0)
 
 
 def export_build_info(promexp: PrometheusExporter, version: str) -> None:
-    '''Export build information for prometheus.'''
+    """Export build information for prometheus."""
 
     promexp.register(
-        name='promqtt_build_info',
-        datatype='gauge',
-        helpstr='Version info',
-        timeout=None)
+        name="promqtt_build_info",
+        datatype="gauge",
+        helpstr="Version info",
+        timeout=None,
+    )
 
-    promexp.set(
-        name='promqtt_build_info',
-        value='1',
-        labels={'version': version})
+    promexp.set(name="promqtt_build_info", value="1", labels={"version": version})
 
 
 def setup_logging(verbose: bool) -> None:
-    '''Configure the logging.'''
+    """Configure the logging."""
 
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
-        format='%(asctime)s %(levelname)s (%(threadName)s:%(name)s) %(message)s')
+        format="%(asctime)s %(levelname)s (%(threadName)s:%(name)s) %(message)s",
+    )
 
-    logger.info(f'Starting {APPNAME} {VERSION}')
+    logger.info(f"Starting {APPNAME} {VERSION}")
 
 
 def load_config(filename: Path) -> PromqttConfig:
-    '''Load the configuration file.'''
+    """Load the configuration file."""
 
     logger.info(f"Loading config file '{filename}'.")
 
-    with open(filename, mode='r', encoding='utf-8') as fhdl:
+    with open(filename, mode="r", encoding="utf-8") as fhdl:
         data = yaml.safe_load(fhdl)
         cfg = PromqttConfig.parse_obj(data)
 
@@ -67,13 +66,12 @@ def load_config(filename: Path) -> PromqttConfig:
 
 
 def main():
-    '''Application main function'''
+    """Application main function"""
 
     # Set up logging
 
-    verbose = str_to_bool(os.environ.get('PROMQTT_VERBOSE', ''))
+    verbose = str_to_bool(os.environ.get("PROMQTT_VERBOSE", ""))
     setup_logging(verbose)
-
 
     # Set up handler to terminate if we receive SIGTERM, e.g. when the user
     # presses Ctrl-C.
@@ -81,7 +79,7 @@ def main():
 
     # load configuration
 
-    cfgfile = Path(os.environ.get('PROMQTT_CONFIG', 'promqtt.yml'))
+    cfgfile = Path(os.environ.get("PROMQTT_CONFIG", "promqtt.yml"))
     cfg = load_config(cfgfile)
 
     promexp = PrometheusExporter()
@@ -90,23 +88,18 @@ def main():
     # Intialize and start the HTTP server
 
     routes = [
-        Route('/metrics', 'text/plain', promexp.render),
-        Route('/cfg', 'application/json', lambda: json.dumps(cfg.dict(), indent=4)),
+        Route("/metrics", "text/plain", promexp.render),
+        Route("/cfg", "application/json", lambda: json.dumps(cfg.dict(), indent=4)),
     ]
 
-    httpsrv = HttpServer(
-        netif=cfg.http.interface,
-        port=cfg.http.port,
-        routes=routes)
+    httpsrv = HttpServer(netif=cfg.http.interface, port=cfg.http.port, routes=routes)
     httpsrv.start_server_thread()
 
-    tmc = MqttPrometheusBridge(
-        promexp,
-        cfg=cfg)
+    tmc = MqttPrometheusBridge(promexp, cfg=cfg)
 
     mqttclient = MqttClient(promexp, cfg.mqtt, tmc)
     mqttclient.loop_forever()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

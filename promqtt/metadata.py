@@ -1,7 +1,7 @@
-'''Application metadata'''
+"""Application metadata"""
 
 # Application name
-APPNAME='promqtt'
+APPNAME = "promqtt"
 
 # Application version
 VERSION = "2404600"

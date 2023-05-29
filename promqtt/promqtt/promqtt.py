@@ -1,22 +1,21 @@
-'''Client for receiving messages from MQTT and parsing them and publishing them
-for prometheus.'''
+"""Client for receiving messages from MQTT and parsing them and publishing them
+for prometheus."""
 
 import logging
 
-from .msghdlr import MessageHandler
+from ..cfgmodel import MessageConfig, MetricModel, PromqttConfig, TypeConfig
 from .mapping import Mapping
-from ..cfgmodel import MetricModel, TypeConfig, PromqttConfig, MessageConfig
+from .msghdlr import MessageHandler
 
 logger = logging.getLogger(__name__)
 
 
-class MqttPrometheusBridge(): # pylint: disable=too-few-public-methods
-    '''Client for receiving messages from MQTT and parsing them and publishing
-    them for prometheus.'''
+class MqttPrometheusBridge:  # pylint: disable=too-few-public-methods
+    """Client for receiving messages from MQTT and parsing them and publishing
+    them for prometheus."""
 
     # Name of MQTT connection state metric
-    MQTT_CONN_STATE_METRIC = 'promqtt_mqtt_conn_state'
-
+    MQTT_CONN_STATE_METRIC = "promqtt_mqtt_conn_state"
 
     def __init__(self, prom_exp, cfg: PromqttConfig) -> None:
         self._prom_exp = prom_exp
@@ -26,9 +25,8 @@ class MqttPrometheusBridge(): # pylint: disable=too-few-public-methods
         self._load_types(cfg.types)
         self._load_msg_handlers(cfg.messages)
 
-
     def _register_measurements(self, metric_cfg: dict[str, MetricModel]) -> None:
-        '''Register measurements for Prometheus.'''
+        """Register measurements for Prometheus."""
 
         for name, meas in metric_cfg.items():
             logger.debug(f"Registering measurement '{name}'")
@@ -38,17 +36,16 @@ class MqttPrometheusBridge(): # pylint: disable=too-few-public-methods
                 datatype=meas.type,
                 helpstr=meas.help,
                 timeout=meas.timeout,
-                with_update_counter=meas.with_update_counter)
-
+                with_update_counter=meas.with_update_counter,
+            )
 
     def _load_types(self, types_cfg: dict[str, dict[str, TypeConfig]]) -> None:
-        '''Load the device types from configuration.'''
+        """Load the device types from configuration."""
 
         self._types = {}
 
         # loop over types
         for type_name, type_cfg in types_cfg.items():
-
             logger.debug(f"Instanciating type '{type_name}'")
 
             # create list of mappings for each type
@@ -58,18 +55,18 @@ class MqttPrometheusBridge(): # pylint: disable=too-few-public-methods
                     type_name=type_name,
                     metric=metric,
                     value_exp=mapping_cfg.value,
-                    label_exps=mapping_cfg.labels)
+                    label_exps=mapping_cfg.labels,
+                )
                 for metric, mapping_cfg in type_cfg.items()
             ]
 
-
     def _load_msg_handlers(self, msg_cfg: list[MessageConfig]):
-        '''Load the message handlers from configuration.
+        """Load the message handlers from configuration.
 
         The message handlers receive messages from one or more topics and
         process the data according to the configured device types.
 
-        '''
+        """
 
         self._handlers = []
 
@@ -84,22 +81,22 @@ class MqttPrometheusBridge(): # pylint: disable=too-few-public-methods
 
             self._handlers.append(
                 MessageHandler(
-                    topics=topics,
-                    parser=handler_cfg.parser,
-                    mappings=mappings))
+                    topics=topics, parser=handler_cfg.parser, mappings=mappings
+                )
+            )
 
             logger.debug(
                 f"Instanciated message handler ({', '.join(topics)}) -> "
-                f"({', '.join(type_names)})")
-
+                f"({', '.join(type_names)})"
+            )
 
     def handle_mqtt_message(self, msg):
-        '''Callback function called by the MQTT client to handle incoming MQTT
-        messages.'''
+        """Callback function called by the MQTT client to handle incoming MQTT
+        messages."""
 
         try:
             for msg_handler in self._handlers:
                 msg_handler.handle(msg)
 
-        except Exception: # pylint: disable=broad-except
-            logger.exception('Failed to handle MQTT message')
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Failed to handle MQTT message")

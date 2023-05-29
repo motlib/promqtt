@@ -1,4 +1,4 @@
-'''Application main entry point.'''
+"""Application main entry point."""
 
 from promqtt.main import main
 
