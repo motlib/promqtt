@@ -2,7 +2,6 @@ version: "3"
 
 services:
   promqtt:
-#    image: promqtt:latest
     build: .
 
     volumes: [] 
