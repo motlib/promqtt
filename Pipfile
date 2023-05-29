@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 coloredlogs = "*"
 paho-mqtt = "*"
+pydantic = "*"
 pyyaml = "*"
 
 [dev-packages]
@@ -15,6 +16,9 @@ mypy = "*"
 pylint = "*"
 pytest = "*"
 pytest-cov = "*"
+types-paho-mqtt = "*"
+types-PyYAML = "*"
+
 
 [requires]
 python_version = "3.11"

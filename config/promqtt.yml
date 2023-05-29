@@ -6,7 +6,6 @@ mqtt:
   port: 1883
   topic: "#"
 
-
 # Configuration of the HTTP server
 http:
   interface: 0.0.0.0

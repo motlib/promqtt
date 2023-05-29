@@ -5,7 +5,7 @@ import logging
 
 from .msghdlr import MessageHandler
 from .mapping import Mapping
-
+from ..cfgmodel import MetricModel, TypeConfig, PromqttConfig, MessageConfig
 
 logger = logging.getLogger(__name__)
 
@@ -18,16 +18,16 @@ class MqttPrometheusBridge(): # pylint: disable=too-few-public-methods
     MQTT_CONN_STATE_METRIC = 'promqtt_mqtt_conn_state'
 
 
-    def __init__(self, prom_exp, cfg):
+    def __init__(self, prom_exp, cfg: PromqttConfig) -> None:
         self._prom_exp = prom_exp
         self._cfg = cfg
 
-        self._register_measurements(cfg['metrics'])
-        self._load_types(cfg['types'])
-        self._load_msg_handlers(cfg['messages'])
+        self._register_measurements(cfg.metrics)
+        self._load_types(cfg.types)
+        self._load_msg_handlers(cfg.messages)
 
 
-    def _register_measurements(self, metric_cfg):
+    def _register_measurements(self, metric_cfg: dict[str, MetricModel]) -> None:
         '''Register measurements for Prometheus.'''
 
         for name, meas in metric_cfg.items():
@@ -35,13 +35,13 @@ class MqttPrometheusBridge(): # pylint: disable=too-few-public-methods
 
             self._prom_exp.register(
                 name=name,
-                datatype=meas['type'],
-                helpstr=meas['help'],
-                timeout=meas.get('timeout', None),
-                with_update_counter=meas.get('with_update_counter', False))
+                datatype=meas.type,
+                helpstr=meas.help,
+                timeout=meas.timeout,
+                with_update_counter=meas.with_update_counter)
 
 
-    def _load_types(self, types_cfg):
+    def _load_types(self, types_cfg: dict[str, dict[str, TypeConfig]]) -> None:
         '''Load the device types from configuration.'''
 
         self._types = {}
@@ -57,13 +57,13 @@ class MqttPrometheusBridge(): # pylint: disable=too-few-public-methods
                     promexp=self._prom_exp,
                     type_name=type_name,
                     metric=metric,
-                    value_exp=mapping_cfg['value'],
-                    label_exps=mapping_cfg['labels'])
+                    value_exp=mapping_cfg.value,
+                    label_exps=mapping_cfg.labels)
                 for metric, mapping_cfg in type_cfg.items()
             ]
 
 
-    def _load_msg_handlers(self, msg_cfg):
+    def _load_msg_handlers(self, msg_cfg: list[MessageConfig]):
         '''Load the message handlers from configuration.
 
         The message handlers receive messages from one or more topics and
@@ -75,17 +75,17 @@ class MqttPrometheusBridge(): # pylint: disable=too-few-public-methods
 
         for handler_cfg in msg_cfg:
             # resolve the type handlers for each message
-            type_names = handler_cfg['types']
+            type_names = handler_cfg.types
             mappings = []
             for type_name in type_names:
                 mappings.extend(self._types[type_name])
 
-            topics = handler_cfg['topics']
+            topics = handler_cfg.topics
 
             self._handlers.append(
                 MessageHandler(
                     topics=topics,
-                    parser=handler_cfg['parser'],
+                    parser=handler_cfg.parser,
                     mappings=mappings))
 
             logger.debug(

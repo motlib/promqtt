@@ -14,6 +14,8 @@ from .httpsrv import HttpServer, Route
 from .promexp import PrometheusExporter
 from .promqtt import MqttPrometheusBridge, MqttClient
 from .utils import StructWrapper, str_to_bool
+from .cfgmodel import PromqttConfig
+
 
 logger = logging.getLogger(__name__)
 
@@ -56,15 +58,16 @@ def setup_logging(verbose):
         logger.debug('Enabled verbose output.')
 
 
-def load_config(filename):
+def load_config(filename) -> PromqttConfig:
     '''Load the configuration file.'''
 
     logger.info(f"Loading config file '{filename}'.")
 
     with open(filename, mode='r', encoding='utf-8') as fhdl:
-        cfg = yaml.safe_load(fhdl)
+        data = yaml.safe_load(fhdl)
+        cfg = PromqttConfig.parse_obj(data)
 
-    return StructWrapper(cfg)
+    return cfg
 
 
 def main():
@@ -92,22 +95,20 @@ def main():
 
     routes = [
         Route('/metrics', 'text/plain', promexp.render),
-        Route('/cfg', 'application/json', lambda: json.dumps(cfg.raw, indent=4)),
+        Route('/cfg', 'application/json', lambda: json.dumps(cfg.dict(), indent=4)),
     ]
 
     httpsrv = HttpServer(
-        netif=cfg['http/interface'],
-        port=cfg['http/port'],
+        netif=cfg.http.interface,
+        port=cfg.http.port,
         routes=routes)
     httpsrv.start_server_thread()
-
-
 
     tmc = MqttPrometheusBridge(
         promexp,
         cfg=cfg)
 
-    mqttclient = MqttClient(promexp, cfg, tmc)
+    mqttclient = MqttClient(promexp, cfg.mqtt, tmc)
     mqttclient.loop_forever()
 
 
