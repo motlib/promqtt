@@ -40,7 +40,7 @@ class Message:
     def parse(self, parser: ParserTypeEnum) -> None:
         """Parse the message payload with the given parser / format."""
 
-        if parser == "json":
+        if parser == ParserTypeEnum.JSON:
             self._data = json.loads(self._payload)
 
     def __str__(self) -> str:
