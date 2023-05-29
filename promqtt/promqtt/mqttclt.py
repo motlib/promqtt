@@ -11,7 +11,7 @@ from .msg import Message
 logger = logging.getLogger(__name__)
 
 
-class MqttClient:
+class MqttClient: # pylint: disable=too-few-public-methods
     """Client for receiving messages from MQTT."""
 
     # Name of MQTT connection state metric
