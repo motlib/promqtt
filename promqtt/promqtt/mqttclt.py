@@ -2,22 +2,24 @@
 for prometheus."""
 
 import logging
+from typing import Any
 
 import paho.mqtt.client as mqtt
 
-from ..cfgmodel import MqttModel
+from ..cfgmodel import MetricTypeEnum, MqttModel
+from ..promexp import PrometheusExporter
 from .msg import Message
 
 logger = logging.getLogger(__name__)
 
 
-class MqttClient: # pylint: disable=too-few-public-methods
+class MqttClient:  # pylint: disable=too-few-public-methods
     """Client for receiving messages from MQTT."""
 
     # Name of MQTT connection state metric
     MQTT_CONN_STATE_METRIC = "promqtt_mqtt_conn_state"
 
-    def __init__(self, prom_exp, cfg: MqttModel, promqtt) -> None:
+    def __init__(self, prom_exp: PrometheusExporter, cfg: MqttModel, promqtt) -> None:
         self._prom_exp = prom_exp
         self._cfg: MqttModel = cfg
         self._promqtt = promqtt
@@ -25,7 +27,7 @@ class MqttClient: # pylint: disable=too-few-public-methods
         # register metric for MQTT connection state
         self._prom_exp.register(
             name=MqttClient.MQTT_CONN_STATE_METRIC,
-            datatype="gauge",
+            datatype=MetricTypeEnum.GAUGE,
             helpstr="Connection state of the connection to the MQTT broker",
         )
 
@@ -55,7 +57,7 @@ class MqttClient: # pylint: disable=too-few-public-methods
 
         self._mqttc.loop_forever()
 
-    def _on_message(self, client, obj, msg) -> None:
+    def _on_message(self, client: mqtt.Client, obj, msg) -> None:
         """Callback function called by the MQTT client to handle incoming MQTT
         messages."""
 
@@ -67,7 +69,9 @@ class MqttClient: # pylint: disable=too-few-public-methods
 
         self._promqtt.handle_mqtt_message(msg)
 
-    def _on_connect(self, client, userdata, flags, result) -> None:
+    def _on_connect(
+        self, client: mqtt.Client, userdata: Any, flags: dict, result: int
+    ) -> None:
         """Callback function called by the MQTT client to inform about establishing a
         connection to a broker."""
 
@@ -87,11 +91,11 @@ class MqttClient: # pylint: disable=too-few-public-methods
 
         self._prom_exp.set(
             name=MqttClient.MQTT_CONN_STATE_METRIC,
-            labels={"broker": self._cfg.broker, "port": self._cfg.port},
+            labels={"broker": self._cfg.broker, "port": str(self._cfg.port)},
             value=1,
         )
 
-    def _on_disconnect(self, client, userdata, result) -> None:
+    def _on_disconnect(self, client: mqtt.Client, userdata: Any, result: int) -> None:
         """Callback function called by the MQTT client when the connection to a broker
         is terminated."""
 
@@ -105,6 +109,6 @@ class MqttClient: # pylint: disable=too-few-public-methods
 
         self._prom_exp.set(
             name=MqttClient.MQTT_CONN_STATE_METRIC,
-            labels={"broker": self._cfg.broker, "port": self._cfg.port},
+            labels={"broker": self._cfg.broker, "port": str(self._cfg.port)},
             value=0,
         )

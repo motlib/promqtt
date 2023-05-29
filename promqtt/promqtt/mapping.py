@@ -1,6 +1,10 @@
 """Represents a mapping from one MQTT topic to one Prometheus metric."""
 
 import logging
+from typing import Any
+
+from ..promexp import PrometheusExporter
+from .msg import Message
 
 logger = logging.getLogger(__name__)
 
@@ -12,20 +16,25 @@ class Mapping:
 
     """
 
-    def __init__(
-        self, promexp, type_name, value_exp, label_exps, metric
-    ):  # pylint: disable=too-many-arguments
+    def __init__( # pylint: disable=too-many-arguments
+        self,
+        promexp: PrometheusExporter,
+        type_name: str,
+        value_exp: str,
+        label_exps: dict[str, str],
+        metric,
+    ) -> None:
         self._type_name = type_name
         self._promexp = promexp
         self._value_exp = value_exp
         self._label_exps = label_exps
         self._metric = metric
 
-    def handle_msg_data(self, msg):
+    def handle_msg_data(self, msg: Message) -> None:
         """Handle a message received from MQTT"""
 
-        eglobals = {}
-        elocals = {
+        eglobals: dict[str, Any] = {}
+        elocals: dict[str, Any] = {
             "msg": msg,
             "data": msg.data,
             "tlist": msg.topic_list,
@@ -76,5 +85,5 @@ class Mapping:
 
         self._promexp.set(name=self._metric, labels=labels, value=value)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Mapping(type={self._type_name}, metric={self._metric})"

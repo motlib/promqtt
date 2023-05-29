@@ -4,7 +4,9 @@ for prometheus."""
 import logging
 
 from ..cfgmodel import MessageConfig, MetricModel, PromqttConfig, TypeConfig
+from ..promexp import PrometheusExporter
 from .mapping import Mapping
+from .msg import Message
 from .msghdlr import MessageHandler
 
 logger = logging.getLogger(__name__)
@@ -17,7 +19,7 @@ class MqttPrometheusBridge:  # pylint: disable=too-few-public-methods
     # Name of MQTT connection state metric
     MQTT_CONN_STATE_METRIC = "promqtt_mqtt_conn_state"
 
-    def __init__(self, prom_exp, cfg: PromqttConfig) -> None:
+    def __init__(self, prom_exp: PrometheusExporter, cfg: PromqttConfig) -> None:
         self._prom_exp = prom_exp
         self._cfg = cfg
 
@@ -42,7 +44,7 @@ class MqttPrometheusBridge:  # pylint: disable=too-few-public-methods
     def _load_types(self, types_cfg: dict[str, dict[str, TypeConfig]]) -> None:
         """Load the device types from configuration."""
 
-        self._types = {}
+        self._types: dict[str, list[Mapping]] = {}
 
         # loop over types
         for type_name, type_cfg in types_cfg.items():
@@ -60,7 +62,7 @@ class MqttPrometheusBridge:  # pylint: disable=too-few-public-methods
                 for metric, mapping_cfg in type_cfg.items()
             ]
 
-    def _load_msg_handlers(self, msg_cfg: list[MessageConfig]):
+    def _load_msg_handlers(self, msg_cfg: list[MessageConfig]) -> None:
         """Load the message handlers from configuration.
 
         The message handlers receive messages from one or more topics and
@@ -68,7 +70,7 @@ class MqttPrometheusBridge:  # pylint: disable=too-few-public-methods
 
         """
 
-        self._handlers = []
+        self._handlers: list[MessageHandler] = []
 
         for handler_cfg in msg_cfg:
             # resolve the type handlers for each message
@@ -90,7 +92,7 @@ class MqttPrometheusBridge:  # pylint: disable=too-few-public-methods
                 f"({', '.join(type_names)})"
             )
 
-    def handle_mqtt_message(self, msg):
+    def handle_mqtt_message(self, msg: Message) -> None:
         """Callback function called by the MQTT client to handle incoming MQTT
         messages."""
 

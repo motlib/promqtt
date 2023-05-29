@@ -3,6 +3,9 @@
 import logging
 import re
 
+from ..cfgmodel import ParserTypeEnum
+from .msg import Message
+
 logger = logging.getLogger(__name__)
 
 
@@ -10,12 +13,12 @@ class MessageHandler:
     """A message handler receives a message from MQTT, parses the contents and
     hands it over to the mapping instances."""
 
-    def __init__(self, topics, parser, mappings):
+    def __init__(self, topics: list[str], parser: ParserTypeEnum, mappings) -> None:
         self._topics = topics
         self._parser = parser
         self._mappings = mappings
 
-    def _can_handle_topic(self, topic):
+    def _can_handle_topic(self, topic) -> bool:
         """Check if a topic can be handled. Checks for both literal matches and
         regex topic patterns, i.e. topics starting with the prefix 're:'."""
 
@@ -30,7 +33,7 @@ class MessageHandler:
 
         return False
 
-    def handle(self, msg):
+    def handle(self, msg: Message) -> None:
         """Handle a message received from MQTT.
 
         This first checks if the handler can handle this message. If not it
@@ -51,5 +54,5 @@ class MessageHandler:
         for mapping in self._mappings:
             mapping.handle_msg_data(msg)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"MessageHandler([{', '.join(self._topics)}])"

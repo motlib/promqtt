@@ -9,7 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from .cfgmodel import PromqttConfig
+from .cfgmodel import MetricTypeEnum, PromqttConfig
 from .httpsrv import HttpServer, Route
 from .metadata import APPNAME, VERSION
 from .promexp import PrometheusExporter
@@ -34,12 +34,11 @@ def export_build_info(promexp: PrometheusExporter, version: str) -> None:
 
     promexp.register(
         name="promqtt_build_info",
-        datatype="gauge",
+        datatype=MetricTypeEnum.GAUGE,
         helpstr="Version info",
-        timeout=None,
     )
 
-    promexp.set(name="promqtt_build_info", value="1", labels={"version": version})
+    promexp.set(name="promqtt_build_info", value=1, labels={"version": version})
 
 
 def setup_logging(verbose: bool) -> None:
@@ -92,7 +91,7 @@ def main():
         Route("/cfg", "application/json", lambda: json.dumps(cfg.dict(), indent=4)),
     ]
 
-    httpsrv = HttpServer(netif=cfg.http.interface, port=cfg.http.port, routes=routes)
+    httpsrv = HttpServer(cfg=cfg.http, routes=routes)
     httpsrv.start_server_thread()
 
     tmc = MqttPrometheusBridge(promexp, cfg=cfg)

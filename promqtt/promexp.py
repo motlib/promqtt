@@ -3,6 +3,9 @@
 import logging
 from datetime import datetime
 from threading import Lock
+from typing import Iterator
+
+from .cfgmodel import MetricTypeEnum
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +19,7 @@ class UnknownMeasurementException(PrometheusExporterException):
     yet."""
 
 
-def _get_time():
+def _get_time() -> datetime:
     """Return the current time as a datetime object.
 
     Wrapped in a function, so it can be stubbed for testing."""
@@ -24,7 +27,7 @@ def _get_time():
     return datetime.now()
 
 
-def _get_label_string(labels):
+def _get_label_string(labels: dict[str, str]) -> str:
     """Convert a dictionary of labels to a unique label string"""
 
     labelstr = ",".join([f'{k}="{labels[k]}"' for k in sorted(labels.keys())])
@@ -36,46 +39,51 @@ class Metric:
     """Represents a Prometheus metric, i.e. a metric name with its helptext and type
     information."""
 
-    def __init__(
-        self, name, datatype, helpstr, timeout=None, with_update_counter=False
-    ):  # pylint: disable=too-many-arguments
+    def __init__( # pylint: disable=too-many-arguments
+        self,
+        name: str,
+        datatype: MetricTypeEnum,
+        helpstr: str,
+        timeout: int = 0,
+        with_update_counter: bool = False,
+    ) -> None:
         self._name = name
         self._datatype = datatype
         self._helpstr = helpstr
         self._timeout = timeout
-        self._data = {}
+        self._data: dict[str, "MetricInstance"] = {}
         self._with_update_counter = with_update_counter
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Return the metric name"""
         return self._name
 
     @property
-    def datatype(self):
+    def datatype(self) -> MetricTypeEnum:
         """Return the metric datatype (gauge, counter, ...)"""
         return self._datatype
 
     @property
-    def helptext(self):
+    def helptext(self) -> str:
         """Return the metric help text"""
 
         return self._helpstr
 
     @property
-    def timeout(self):
+    def timeout(self) -> int:
         """Return the timeout in seconds for this metric. Metric instances are removed
         from the metric after the timeout is expired."""
 
         return self._timeout
 
     @property
-    def with_update_counter(self):
+    def with_update_counter(self) -> bool:
         """Returns true if this metric has an associated update counter metric."""
 
         return self._with_update_counter
 
-    def set(self, labels, value):
+    def set(self, labels: dict[str, str], value: float):
         """Set a value for a metric instance"""
 
         labelstr = _get_label_string(labels)
@@ -101,7 +109,7 @@ class Metric:
                 instance = self._data[labelstr]
                 instance.value = value
 
-    def get(self, labels):
+    def get(self, labels: dict[str, str]) -> float | None:
         """Return the last stored value of a metric instance. Returns None if
         the instance does not exist."""
 
@@ -114,7 +122,7 @@ class Metric:
         inst = self._data[labelstr]
         return inst.value
 
-    def inc(self, labels):
+    def inc(self, labels: dict[str, str]):
         """Increases the value of the metric instance by one."""
 
         val = self.get(labels)
@@ -127,12 +135,12 @@ class Metric:
         self.set(labels, val)
 
     @property
-    def has_timeout(self):
+    def has_timeout(self) -> bool:
         """Return true if this metric has an timeout assigned."""
 
         return (self.timeout is not None) and (self.timeout > 0)
 
-    def check_timeout(self):
+    def check_timeout(self) -> None:
         """Check all metric instances for timeout and remove the timed out instances."""
 
         # find all timed out metric instances
@@ -146,20 +154,20 @@ class Metric:
         for labelstr in to_delete:
             del self._data[labelstr]
 
-    def render_iter(self):
+    def render_iter(self) -> Iterator[str]:
         """Return an iterator returning separate lines in Prometheus format"""
 
         yield f"# HELP {self.name} {self.helptext}"
-        yield f"# TYPE {self.name} {self.datatype}"
+        yield f"# TYPE {self.name} {self.datatype.value}"
 
         yield from (str(instance) for instance in self._data.values())
 
-    def render(self):
+    def render(self) -> str:
         """Render the metric to Prometheus format"""
 
         return "\n".join(self.render_iter())
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self._name
 
 
@@ -167,7 +175,7 @@ class MetricInstance:
     """Represents a single metric instance. Instances are identified by a unique
     combination of labels and a value."""
 
-    def __init__(self, metric, labels, value):
+    def __init__(self, metric: Metric, labels: dict[str, str], value: float):
         self._metric = metric
         self._labels = labels
         self._label_str = _get_label_string(labels)
@@ -175,13 +183,13 @@ class MetricInstance:
         self.value = value
 
     @property
-    def value(self):
+    def value(self) -> float:
         """Return the value"""
 
         return self._value
 
     @value.setter
-    def value(self, value):
+    def value(self, value: float) -> None:
         """Set the value"""
 
         self._value = value
@@ -190,13 +198,13 @@ class MetricInstance:
         logger.debug(f"Set metric instance {self}")
 
     @property
-    def age(self):
+    def age(self) -> float:
         """Return the age of the metric value, i.e. when it was last set."""
 
         return (_get_time() - self._timestamp).total_seconds()
 
     @property
-    def is_timed_out(self):
+    def is_timed_out(self) -> bool:
         """Return True if the metric timeout is expired"""
 
         if not self._metric.has_timeout:
@@ -205,11 +213,11 @@ class MetricInstance:
         return self.age >= self._metric.timeout
 
     @property
-    def label_string(self):
+    def label_string(self) -> str:
         """Return the label string of this instance"""
         return self._label_str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self._metric.name}{{{self.label_string}}} {self.value}"
 
 
@@ -217,12 +225,17 @@ class PrometheusExporter:
     """Manage all measurements and provide the htp interface for interfacing with
     Prometheus."""
 
-    def __init__(self):
-        self._prom = {}
+    def __init__(self) -> None:
+        self._prom: dict[str, Metric] = {}
         self._lock = Lock()
 
     def register(
-        self, name, datatype, helpstr, timeout=None, with_update_counter=False
+        self,
+        name: str,
+        datatype: MetricTypeEnum,
+        helpstr: str,
+        timeout: int = 0,
+        with_update_counter: bool = False,
     ):  # pylint: disable=too-many-arguments
         """Register a name for exporting. This must be called before calling
         `set()`.
@@ -253,12 +266,12 @@ class PrometheusExporter:
         if with_update_counter:
             self.register(
                 name=f"{name}_updates",
-                datatype="counter",
+                datatype=MetricTypeEnum.COUNTER,
                 helpstr=f"Number of updates to {name}",
-                timeout=None,
+                timeout=0,
             )
 
-    def set(self, name, labels, value):
+    def set(self, name: str, labels: dict[str, str], value: float):
         """Set a value for exporting.
 
         :param str name: The name of the value to set. This name must have been
@@ -284,20 +297,20 @@ class PrometheusExporter:
                 counter = self._prom[f"{name}_updates"]
                 counter.inc(labels)
 
-    def check_timeout(self):
+    def check_timeout(self) -> None:
         """Remove all metric instances which have timed out"""
 
         with self._lock:
             for metric in self._prom.values():
                 metric.check_timeout()
 
-    def render_iter(self):
+    def render_iter(self) -> Iterator[str]:
         """Return an iterator providing each line of Prometheus output."""
 
         for metric in self._prom.values():
             yield from metric.render_iter()
 
-    def render(self):
+    def render(self) -> str:
         """Render the current data to Prometheus format. See
         https://prometheus.io/docs/instrumenting/exposition_formats/ for details.
 

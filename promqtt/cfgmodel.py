@@ -5,7 +5,10 @@ from typing import Any
 
 from pydantic import BaseModel, Extra, Field, root_validator
 
+from .httpsrv.config import HttpServerConfig
+
 # pylint: disable=too-few-public-methods
+
 
 class MqttModel(BaseModel):
     """MQTT broker settings"""
@@ -15,19 +18,10 @@ class MqttModel(BaseModel):
     topic: str = Field("#", description="The topic to subscribe")
 
     class Config:
-        '''Pydantic configuration'''
+        """Pydantic configuration"""
+
         extra = Extra.forbid
 
-class HttpModel(BaseModel):
-    """HTTP server related settings"""
-
-    interface: str = Field("0.0.0.0", description="Interface address to listen on")
-
-    port: int = Field(8086, description="Port number")
-
-    class Config:
-        '''Pydantic configuration'''
-        extra = Extra.forbid
 
 class MetricTypeEnum(Enum):
     """Enumeration of metric types"""
@@ -39,7 +33,7 @@ class MetricTypeEnum(Enum):
 class MetricModel(BaseModel):
     """Configuration of a metric"""
 
-    type: str = Field(description="Metric type")
+    type: MetricTypeEnum = Field(description="Metric type")
     help: str = Field("", description="Metric help text")
     timeout: int = Field(
         0,
@@ -51,8 +45,10 @@ class MetricModel(BaseModel):
     with_update_counter: bool = Field(False, description="Enable update counter metric")
 
     class Config:
-        '''Pydantic configuration'''
+        """Pydantic configuration"""
+
         extra = Extra.forbid
+
 
 class TypeConfig(BaseModel):
     """Configuration of a type / device"""
@@ -63,8 +59,10 @@ class TypeConfig(BaseModel):
     labels: dict[str, str] = Field(description="The labels attached to a metric")
 
     class Config:
-        '''Pydantic configuration'''
+        """Pydantic configuration"""
+
         extra = Extra.forbid
+
 
 class ParserTypeEnum(Enum):
     """Types of MQTT message parsers"""
@@ -83,7 +81,8 @@ class MessageConfig(BaseModel):
     )
 
     class Config:
-        '''Pydantic configuration'''
+        """Pydantic configuration"""
+
         extra = Extra.forbid
 
 
@@ -92,7 +91,7 @@ class PromqttConfig(BaseModel):
 
     mqtt: MqttModel
 
-    http: HttpModel
+    http: HttpServerConfig
 
     metrics: dict[str, MetricModel]
 
@@ -101,12 +100,15 @@ class PromqttConfig(BaseModel):
     messages: list[MessageConfig]
 
     class Config:
-        '''Pydantic configuration'''
+        """Pydantic configuration"""
+
         extra = Extra.forbid
 
     @root_validator
-    def check_references(cls, values: dict[str, Any]) -> dict[str, Any]: # pylint: disable=no-self-argument
-        '''Pydantic validator to check internal references in config file'''
+    def check_references( # pylint: disable=no-self-argument
+        cls, values: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Pydantic validator to check internal references in config file"""
 
         typescfg = values["types"]
         metricscfg = values["metrics"]

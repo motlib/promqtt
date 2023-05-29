@@ -10,13 +10,13 @@ class RouteHttpRequestHandler(BaseHTTPRequestHandler):
         """Find a suitable route to handle the request. If no route can be found,
         return None."""
 
-        for route in self.server.srv.routes:
+        for route in self.server.srv.routes:  # type: ignore
             if route.can_handle(self.path):
                 return route
 
         return None
 
-    def do_GET(self):  # pylint: disable=invalid-name
+    def do_GET(self) -> None:  # pylint: disable=invalid-name
         """Handler for GET requests"""
 
         route = self.find_route()

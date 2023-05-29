@@ -1,8 +1,9 @@
 """Representation of a MQTT message"""
 
 import json
-
 from typing import Any
+
+from ..cfgmodel import ParserTypeEnum
 
 
 class Message:
@@ -36,11 +37,11 @@ class Message:
         """Returns the topic as a list of topic components"""
         return self._topic_list
 
-    def parse(self, parser):
+    def parse(self, parser: ParserTypeEnum) -> None:
         """Parse the message payload with the given parser / format."""
 
         if parser == "json":
             self._data = json.loads(self._payload)
 
-    def __str__(self):
-        return f"{self.topic}: {self.payload}"
+    def __str__(self) -> str:
+        return f"{self.topic}: {self.payload!r}"
