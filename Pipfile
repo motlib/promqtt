@@ -4,7 +4,6 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-coloredlogs = "*"
 paho-mqtt = "*"
 pydantic = "*"
 pyyaml = "*"
@@ -18,7 +17,6 @@ pytest = "*"
 pytest-cov = "*"
 types-paho-mqtt = "*"
 types-PyYAML = "*"
-
 
 [requires]
 python_version = "3.11"

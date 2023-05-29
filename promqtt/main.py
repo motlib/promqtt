@@ -5,22 +5,21 @@ import logging
 import os
 import signal
 import sys
-
-import coloredlogs
+from pathlib import Path
 import yaml
 
 from .metadata import APPNAME, VERSION
 from .httpsrv import HttpServer, Route
 from .promexp import PrometheusExporter
 from .promqtt import MqttPrometheusBridge, MqttClient
-from .utils import StructWrapper, str_to_bool
+from .utils import str_to_bool
 from .cfgmodel import PromqttConfig
 
 
 logger = logging.getLogger(__name__)
 
 
-def sigterm_handler(signum, stack_frame):
+def sigterm_handler(signum: int, stack_frame) -> None:
     '''Handle the SIGTERM signal by shutting down.'''
 
     del signum
@@ -30,7 +29,7 @@ def sigterm_handler(signum, stack_frame):
     sys.exit(0)
 
 
-def export_build_info(promexp, version):
+def export_build_info(promexp: PrometheusExporter, version: str) -> None:
     '''Export build information for prometheus.'''
 
     promexp.register(
@@ -45,20 +44,17 @@ def export_build_info(promexp, version):
         labels={'version': version})
 
 
-def setup_logging(verbose):
+def setup_logging(verbose: bool) -> None:
     '''Configure the logging.'''
 
-    coloredlogs.install(
+    logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
-        fmt='%(asctime)s %(levelname)s (%(threadName)s:%(name)s) %(message)s')
+        format='%(asctime)s %(levelname)s (%(threadName)s:%(name)s) %(message)s')
 
     logger.info(f'Starting {APPNAME} {VERSION}')
 
-    if verbose:
-        logger.debug('Enabled verbose output.')
 
-
-def load_config(filename) -> PromqttConfig:
+def load_config(filename: Path) -> PromqttConfig:
     '''Load the configuration file.'''
 
     logger.info(f"Loading config file '{filename}'.")
@@ -85,7 +81,7 @@ def main():
 
     # load configuration
 
-    cfgfile = os.environ.get('PROMQTT_CONFIG', 'promqtt.yml')
+    cfgfile = Path(os.environ.get('PROMQTT_CONFIG', 'promqtt.yml'))
     cfg = load_config(cfgfile)
 
     promexp = PrometheusExporter()
