@@ -1,0 +1,11 @@
+{
+//"image": "python:3.11",
+    "build": { "dockerfile": "Dockerfile" },
+
+    "customizations": {
+        "vscode": {
+            "extensions": []
+        }
+    },
+    "forwardPorts": [8086]
+}
