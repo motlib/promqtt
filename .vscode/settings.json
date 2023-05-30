@@ -1,0 +1,6 @@
+{
+    "yaml.schemas": {
+        "config/promqtt.schema.json": ["config/*.yml", "config/*.yaml"]
+    },
+    "python.analysis.typeCheckingMode": "basic"
+}
