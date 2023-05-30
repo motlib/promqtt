@@ -26,6 +26,7 @@ metrics:
     type: gauge
     help: Temperature in degree celsius
     timeout: 0
+    with_update_counter: true
   promqtt_rssi:
     type: gauge
     help: Relative wifi signal strength indicator
