@@ -1,6 +1,9 @@
 #!/bin/bash
+#
+# Build docker image
+#
 
-source $(dirname $0)/settings.sh
+source $(dirname $0)/lib/build_helper.sh
 
 $(dirname $0)/set-version.sh
 

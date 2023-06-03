@@ -1,4 +1,7 @@
 #!/usr/bin/bash
+#
+# Some global settings for build and QA scripts
+#
 
 APPNAME="promqtt"
 
