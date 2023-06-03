@@ -42,4 +42,4 @@ RUN set -ex \
 COPY . /app
 
 # Default command to run
-CMD ["python", "-m", "promqtt"]
+ENTRYPOINT ["python", "-u", "-m", "promqtt"]
