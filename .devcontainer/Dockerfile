@@ -1,9 +1,7 @@
-FROM python:3.11
+FROM python:3.11-alpine
 
-RUN \
-    apt-get update \
-    && export DEBIAN_FRONTEND=noninteractive \
-    && apt-get -y install git \
+ENV EDITOR="code -w"
+
+RUN apk add --no-cache bash git less openssh \
     \
     && python -m pip install --upgrade pip pipenv
-
