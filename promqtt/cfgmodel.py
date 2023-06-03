@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import BaseModel, Extra, Field, root_validator
 
 from .httpsrv.config import HttpServerConfig
+from .promexp import MetricTypeEnum
 
 # pylint: disable=too-few-public-methods
 
@@ -21,13 +22,6 @@ class MqttModel(BaseModel):
         """Pydantic configuration"""
 
         extra = Extra.forbid
-
-
-class MetricTypeEnum(Enum):
-    """Enumeration of metric types"""
-
-    GAUGE = "gauge"
-    COUNTER = "counter"
 
 
 class MetricModel(BaseModel):
