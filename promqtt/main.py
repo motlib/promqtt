@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import yaml
+from logfmter import Logfmter
 
 from .cfgmodel import MetricTypeEnum, PromqttConfig
 from .httpsrv import HttpServer, Route
@@ -44,9 +45,21 @@ def export_build_info(promexp: PrometheusExporter, version: str) -> None:
 def setup_logging(verbose: bool) -> None:
     """Configure the logging."""
 
+    handler = logging.StreamHandler()
+
+    keys = ["when", "at"]
+    if verbose:
+        keys.append("code")
+
+    handler.setFormatter(
+        Logfmter(
+            keys=keys, mapping={"at": "levelname", "when": "asctime", "code": "name"}
+        )
+    )
+
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
-        format="%(asctime)s %(levelname)s (%(threadName)s:%(name)s) %(message)s",
+        handlers=[handler],
     )
 
     logger.info(f"Starting {APPNAME} {VERSION}")
