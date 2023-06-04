@@ -1,4 +1,4 @@
-name: Run quality assurance tasks
+name: Quality Assurance
 
 # We run on all branches and also for pull-requests
 on:
@@ -15,10 +15,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - name: Build docker images
+      - name: Build Docker image
         run: docker build -t qa --file .devcontainer/Dockerfile .
 
-      - name: Run tests
-        run: docker run -v $PWD:/app -w /app qa bash -c "pipenv sync --dev; scripts/qa.sh"
+      - name: Start Docker container
+        run: docker run --rm --name qa_ctr -v $PWD:/app -w /app -d qa:latest sleep infinity
+
+      - name: Install Python dependencies
+        run: docker exec qa_ctr pipenv sync --dev
+
+      - name: Run code format check
+        run: docker exec qa_ctr pipenv run ./scripts/format.sh --check
+
+      - name: Run pylint
+        run: docker exec qa_ctr pipenv run ./scripts/pylint.sh
+
+      - name: Run mypy 
+        run: docker exec qa_ctr pipenv run ./scripts/mypy.sh
+
+      - name: Run pytest
+        run: docker exec qa_ctr pipenv run ./scripts/pytest.sh
+
+      - name: Stop and tidy up
+        run: docker stop qa_ctr

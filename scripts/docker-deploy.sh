@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Manually deploy docker image to host
+#
 
 source $(dirname $0)/settings.sh
 

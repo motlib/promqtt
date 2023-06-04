@@ -7,10 +7,10 @@ import pytest
 import promqtt.promexp
 
 from ..promexp import (
+    MetricTypeEnum,
     PrometheusExporter,
     PrometheusExporterException,
     UnknownMeasurementException,
-    MetricTypeEnum
 )
 
 # To be able to use fixtures
@@ -35,7 +35,9 @@ def promexp() -> PrometheusExporter:
 def test_promqtt_register(promexp: PrometheusExporter) -> None:
     """Register measurement and check that it's not yet in the output."""
 
-    promexp.register(name="test_meas_1", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=12)
+    promexp.register(
+        name="test_meas_1", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=12
+    )
 
     out = promexp.render().split("\n")
 
@@ -48,18 +50,25 @@ def test_promqtt_register(promexp: PrometheusExporter) -> None:
 def test_promqtt_register_twice(promexp: PrometheusExporter) -> None:
     """Double registration of a measurement raises an exception."""
 
-    promexp.register(name="test_meas_1", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=12)
+    promexp.register(
+        name="test_meas_1", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=12
+    )
 
     with pytest.raises(PrometheusExporterException):
         promexp.register(
-            name="test_meas_1", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=12
+            name="test_meas_1",
+            datatype=MetricTypeEnum.GAUGE,
+            helpstr="yeah",
+            timeout=12,
         )
 
 
 def test_promqtt_set(promexp: PrometheusExporter) -> None:
     """Setting a value to a registered measurement works fine."""
 
-    promexp.register(name="test_meas_1", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=12)
+    promexp.register(
+        name="test_meas_1", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=12
+    )
 
     promexp.set(name="test_meas_1", value=12.3, labels={"foo": "bar"})
 
@@ -74,7 +83,9 @@ def test_promqtt_set(promexp: PrometheusExporter) -> None:
 def test_promqtt_unset(promexp: PrometheusExporter) -> None:
     """Setting a value of a registered metric to None removes it."""
 
-    promexp.register(name="test_meas_1", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=12)
+    promexp.register(
+        name="test_meas_1", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=12
+    )
 
     # Set to metric values with different labels
     promexp.set(name="test_meas_1", value=12.3, labels={"foo": "bar"})
@@ -89,7 +100,9 @@ def test_promqtt_unset(promexp: PrometheusExporter) -> None:
 def test_promqtt_unset_new(promexp: PrometheusExporter) -> None:
     """Setting a value of a registered metric that was never set has no effect."""
 
-    promexp.register(name="test_meas_1", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=12)
+    promexp.register(
+        name="test_meas_1", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=12
+    )
 
     promexp.set(name="test_meas_1", value=None, labels={"foo": "bar"})
 
@@ -106,9 +119,13 @@ def test_promqtt_not_registered(promexp: PrometheusExporter) -> None:
 def test_promqtt_timeout(monkeypatch, promexp: PrometheusExporter) -> None:
     """Check if timed out items are correctly removed."""
 
-    promexp.register(name="test_meas_1", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=12)
+    promexp.register(
+        name="test_meas_1", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=12
+    )
 
-    promexp.register(name="test_meas_2", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=0)
+    promexp.register(
+        name="test_meas_2", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=0
+    )
 
     # create dummy functions returning the current time or time 13s in the
     # future to fake timeout.
