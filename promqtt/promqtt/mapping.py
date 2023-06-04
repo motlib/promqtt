@@ -16,7 +16,7 @@ class Mapping:
 
     """
 
-    def __init__( # pylint: disable=too-many-arguments
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         promexp: PrometheusExporter,
         type_name: str,

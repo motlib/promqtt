@@ -99,7 +99,7 @@ class PromqttConfig(BaseModel):
         extra = Extra.forbid
 
     @root_validator
-    def check_references( # pylint: disable=no-self-argument
+    def check_references(  # pylint: disable=no-self-argument
         cls, values: dict[str, Any]
     ) -> dict[str, Any]:
         """Pydantic validator to check internal references in config file"""
