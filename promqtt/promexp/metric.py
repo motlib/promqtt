@@ -141,3 +141,7 @@ class Metric:
 
     def __str__(self) -> str:
         return self._name
+
+    def __len__(self) -> int:
+        """Returns the number of metric instances."""
+        return len(self._data)

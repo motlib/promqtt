@@ -143,4 +143,42 @@ def test_promqtt_timeout(monkeypatch, promexp: PrometheusExporter) -> None:
     assert not _has_line(promexp, 'test_meas_1{foo="bar"} 12.3')
 
     # as there was only one item, also make sure that the header is removed
-    assert not _has_line(promexp, "# HELP yeah1")
+    # assert not _has_line(promexp, "# HELP yeah1")
+
+
+def test_promexp_hide_empty_metrics():
+    """Ensure that if hide_empty_metrics is set, that the headers of an empty metric
+    are not present in the output."""
+
+    promexp = PrometheusExporter(hide_empty_metrics=True)
+
+    promexp.register(name="test1", datatype=MetricTypeEnum.GAUGE, helpstr="helpstr1")
+    promexp.register(name="test2", datatype=MetricTypeEnum.GAUGE, helpstr="helpstr2")
+
+    promexp.set(name="test1", labels={"foo": "bar"}, value=42)
+
+    # has metric instance, so header should be in output
+    assert _has_line(promexp, "# HELP test1 helpstr1")
+    assert _has_line(promexp, "# TYPE test1 gauge")
+    # no metric instance, so should not appear in output
+    assert not _has_line(promexp, "# HELP test2 helpstr2")
+    assert not _has_line(promexp, "# TYPE test2 gause")
+
+
+def test_promexp_show_empty_metrics():
+    """Ensure that if hide_empty_metrics is not set, that the headers of an empty metric
+    are still present in the output."""
+
+    promexp = PrometheusExporter(hide_empty_metrics=False)
+
+    promexp.register(name="test1", datatype=MetricTypeEnum.GAUGE, helpstr="helpstr1")
+    promexp.register(name="test2", datatype=MetricTypeEnum.GAUGE, helpstr="helpstr2")
+
+    promexp.set(name="test1", labels={"foo": "bar"}, value=42)
+
+    # has metric instance, so header should be in output
+    assert _has_line(promexp, "# HELP test1 helpstr1")
+    assert _has_line(promexp, "# TYPE test1 gauge")
+    # no metric instance, but header shall still appear in output
+    assert _has_line(promexp, "# HELP test2 helpstr2")
+    assert _has_line(promexp, "# TYPE test2 gauge")

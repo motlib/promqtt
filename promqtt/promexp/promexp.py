@@ -15,9 +15,10 @@ class PrometheusExporter:
     """Manage all measurements and provide the htp interface for interfacing with
     Prometheus."""
 
-    def __init__(self) -> None:
+    def __init__(self, hide_empty_metrics: bool = False) -> None:
         self._prom: dict[str, Metric] = {}
         self._lock = Lock()
+        self._hide_empty_metrics = hide_empty_metrics
 
     def register(
         self,
@@ -98,7 +99,8 @@ class PrometheusExporter:
         """Return an iterator providing each line of Prometheus output."""
 
         for metric in self._prom.values():
-            yield from metric.render_iter()
+            if not self._hide_empty_metrics or len(metric):
+                yield from metric.render_iter()
 
     def render(self) -> str:
         """Render the current data to Prometheus format. See
