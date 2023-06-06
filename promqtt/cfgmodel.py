@@ -6,7 +6,7 @@ from typing import Any
 from pydantic import BaseModel, Extra, Field, root_validator
 
 from .httpsrv.config import HttpServerConfig
-from .promexp import MetricTypeEnum
+from .promexp.types import MetricTypeEnum
 
 # pylint: disable=too-few-public-methods
 

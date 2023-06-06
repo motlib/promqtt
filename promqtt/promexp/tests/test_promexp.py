@@ -4,17 +4,12 @@ from datetime import datetime, timedelta
 
 import pytest
 
-import promqtt.promexp
-
 from ..promexp import (
     MetricTypeEnum,
     PrometheusExporter,
     PrometheusExporterException,
     UnknownMeasurementException,
 )
-
-# To be able to use fixtures
-# pylint: disable=redefined-outer-name
 
 
 def _has_line(promexp: PrometheusExporter, line: str):
@@ -25,8 +20,8 @@ def _has_line(promexp: PrometheusExporter, line: str):
     return any(map(lambda l: l == line, out))
 
 
-@pytest.fixture
-def promexp() -> PrometheusExporter:
+@pytest.fixture(name="promexp")
+def promexp_fixture() -> PrometheusExporter:
     """Create a new prometheus exporter instance."""
 
     return PrometheusExporter()
@@ -120,37 +115,32 @@ def test_promqtt_timeout(monkeypatch, promexp: PrometheusExporter) -> None:
     """Check if timed out items are correctly removed."""
 
     promexp.register(
-        name="test_meas_1", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=12
+        name="test_meas_1", datatype=MetricTypeEnum.GAUGE, helpstr="yeah1", timeout=12
     )
 
     promexp.register(
-        name="test_meas_2", datatype=MetricTypeEnum.GAUGE, helpstr="yeah", timeout=0
+        name="test_meas_2", datatype=MetricTypeEnum.GAUGE, helpstr="yeah2", timeout=0
     )
 
     # create dummy functions returning the current time or time 13s in the
     # future to fake timeout.
-    dtm = datetime.now()
-
     def tm_now():
-        return dtm
+        return datetime(year=2023, month=8, day=7, hour=12, minute=30, second=0)
 
     def tm_13s():
-        return dtm + timedelta(seconds=13)
+        return tm_now() + timedelta(seconds=13)
 
-    monkeypatch.setattr(promqtt.promexp, "_get_time", tm_now)
+    monkeypatch.setattr("promqtt.promexp.metric_inst.get_current_time", tm_now)
 
-    # promexp._get_time = tm_now # pylint: disable=protected-access
-    # promqtt.promexp._get_time = tm_now
     promexp.set(name="test_meas_1", value=12.3, labels={"foo": "bar"})
 
     # make sure it is rendered to the output
     assert _has_line(promexp, 'test_meas_1{foo="bar"} 12.3')
 
-    # promexp._get_time = tm_13s # pylint: disable=protected-access
-    monkeypatch.setattr(promqtt.promexp, "_get_time", tm_13s)
+    monkeypatch.setattr("promqtt.promexp.metric_inst.get_current_time", tm_13s)
 
     # make sure it is not rendered to the output anymore
     assert not _has_line(promexp, 'test_meas_1{foo="bar"} 12.3')
 
     # as there was only one item, also make sure that the header is removed
-    assert not _has_line(promexp, "# HELP yeah")
+    assert not _has_line(promexp, "# HELP yeah1")
